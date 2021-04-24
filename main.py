@@ -72,6 +72,9 @@ class VisGraphicsView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
 class MainWindow(QMainWindow):
+
+    RADIUS = 10
+
     def __init__(self, input_file):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
@@ -79,7 +82,8 @@ class MainWindow(QMainWindow):
 
         self.nodes = []
         self.edges = []
-        self.loadAndMapGraph(input_file)
+        self.loadGraph(input_file)
+        self.renderGraph()
 
         # self.generateAndMapDataOld()
         # self.setMinimumSize(800, 600)
@@ -92,7 +96,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.view)
         self.view.setGeometry(0, 0, 800, 600)
 
-    def loadAndMapGraph(self, input_file):
+    def loadGraph(self, input_file):
         graph = nx.read_graphml(input_file)
 
         self.nodes = [None] * len(graph.nodes())
@@ -100,8 +104,15 @@ class MainWindow(QMainWindow):
             self.nodes[int(node_id)] = Node(id=int(node_id), x=float(node["x"]), y=float(node["y"]))
 
         for source, target in graph.edges():
-            self.edges.append(Edge(id=len(self.edges), source=source, target=target))
+            self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
 
+    def renderGraph(self):
+        offset = self.RADIUS // 2
+        for edge in self.edges:
+            self.scene.addLine(edge.source.x + offset, edge.source.y + offset, edge.target.x + offset, edge.target.y + offset, QPen(Qt.white))
+
+        for node in self.nodes:
+            self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
 
     def generateAndMapDataOld(self):
         #Generate random data
