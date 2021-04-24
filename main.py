@@ -10,6 +10,8 @@
 # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import sys, random, math
+import networkx as nx
+from graph import Node, Edge
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
 from PySide6.QtGui import QBrush, QPen, QTransform, QPainter
@@ -70,12 +72,17 @@ class VisGraphicsView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, input_file):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createGraphicView()
-        self.generateAndMapData()
-        #self.setMinimumSize(800, 600)
+
+        self.nodes = []
+        self.edges = []
+        self.loadAndMapGraph(input_file)
+
+        # self.generateAndMapDataOld()
+        # self.setMinimumSize(800, 600)
         self.show()
 
     def createGraphicView(self):
@@ -85,7 +92,18 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.view)
         self.view.setGeometry(0, 0, 800, 600)
 
-    def generateAndMapData(self):
+    def loadAndMapGraph(self, input_file):
+        graph = nx.read_graphml(input_file)
+
+        self.nodes = [None] * len(graph.nodes())
+        for node_id, node in graph.nodes(data=True):
+            self.nodes[int(node_id)] = Node(id=int(node_id), x=float(node["x"]), y=float(node["y"]))
+
+        for source, target in graph.edges():
+            self.edges.append(Edge(id=len(self.edges), source=source, target=target))
+
+
+    def generateAndMapDataOld(self):
         #Generate random data
         count = 100;
         x = []
@@ -105,7 +123,7 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    ex = MainWindow()
+    ex = MainWindow(sys.argv[1])
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
