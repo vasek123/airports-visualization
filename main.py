@@ -23,12 +23,15 @@ class VisGraphicsScene(QGraphicsScene):
         self.selected = QPen(Qt.red)
 
     def mouseReleaseEvent(self, event): 
-        if(self.wasDragg):
+        if self.wasDragg:
             return
-        if(self.selection):
+        # If something has been previously selected, set its outline back to black
+        if self.selection:
             self.selection.setPen(self.pen)
+        # Try to get the new item
         item = self.itemAt(event.scenePos(), QTransform())
-        if(item):
+        if item:
+            # Sets its outline to the "selected" color and store it in self.selection
             item.setPen(self.selected)
             self.selection = item
 
@@ -62,7 +65,7 @@ class VisGraphicsView(QGraphicsView):
         deltaX = endX - self.startX
         deltaY = endY - self.startY
         distance = math.sqrt(deltaX*deltaX + deltaY*deltaY)
-        if(distance > 5):
+        if distance > 5:
             self.myScene.wasDragg = True
         super().mouseReleaseEvent(event)
 
