@@ -15,6 +15,9 @@ from graph import Node, Edge
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
 from PySide6.QtGui import QBrush, QPen, QTransform, QPainter
+import pandas as pd
+import shapefile
+
 
 class VisGraphicsScene(QGraphicsScene):
     def __init__(self):
@@ -82,12 +85,13 @@ class MainWindow(QMainWindow):
 
         self.nodes = []
         self.edges = []
-        self.loadGraph(input_file)
-        self.renderGraph()
+        #self.loadGraph(input_file)
+        #self.renderGraph()
+        self.loadShapeFile(None)
 
         # self.generateAndMapDataOld()
         # self.setMinimumSize(800, 600)
-        self.show()
+        #self.show()
 
     def createGraphicView(self):
         self.scene = VisGraphicsScene()
@@ -105,6 +109,13 @@ class MainWindow(QMainWindow):
 
         for source, target in graph.edges():
             self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
+
+    def loadShapeFile(self, input_file):
+        sf = shapefile.Reader("cb_2018_us_state_5m/cb_2018_us_state_5m.shp")
+        s = sf.shapes()
+        print(sf.bbox)
+
+
 
     def renderGraph(self):
         offset = self.RADIUS // 2
@@ -134,7 +145,7 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    ex = MainWindow(sys.argv[1])
+    ex = MainWindow(None)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
