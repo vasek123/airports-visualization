@@ -2,3 +2,4 @@
 __pycache__
 venv-viz
 vizProject
+.DS_Store

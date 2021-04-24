@@ -12,10 +12,9 @@
 import sys, random, math
 import networkx as nx
 from graph import Node, Edge
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import QPointF, Qt, QSize
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
-from PySide6.QtGui import QBrush, QPen, QTransform, QPainter
-import pandas as pd
+from PySide6.QtGui import QBrush, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter
 import shapefile
 
 
@@ -78,20 +77,24 @@ class MainWindow(QMainWindow):
 
     RADIUS = 10
 
-    def __init__(self, input_file):
+    def __init__(self, airlines_file_path, map_shape_file_path):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createGraphicView()
 
         self.nodes = []
         self.edges = []
-        #self.loadGraph(input_file)
-        #self.renderGraph()
-        self.loadShapeFile(None)
+
+        # self.loadShapeFile(map_shape_file_path)
+        # self.generateMap()
+
+        self.loadGraph(airlines_file_path)
+        self.generateGraph()
+
 
         # self.generateAndMapDataOld()
         # self.setMinimumSize(800, 600)
-        #self.show()
+        self.show()
 
     def createGraphicView(self):
         self.scene = VisGraphicsScene()
@@ -100,8 +103,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.view)
         self.view.setGeometry(0, 0, 800, 600)
 
-    def loadGraph(self, input_file):
-        graph = nx.read_graphml(input_file)
+    def loadGraph(self, input_file_path):
+        graph = nx.read_graphml(input_file_path)
 
         self.nodes = [None] * len(graph.nodes())
         for node_id, node in graph.nodes(data=True):
@@ -110,14 +113,34 @@ class MainWindow(QMainWindow):
         for source, target in graph.edges():
             self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
 
-    def loadShapeFile(self, input_file):
-        sf = shapefile.Reader("cb_2018_us_state_5m/cb_2018_us_state_5m.shp")
-        s = sf.shapes()
-        print(sf.bbox)
+    def loadShapeFile(self, input_file_path):
+        with shapefile.Reader(input_file_path) as sf:
+            self.map_shapes = sf.shapes()
+            self.map_data = sf.records()
 
+        del self.map_shapes[39] # Hawaii
+        del self.map_data[39]
+        del self.map_shapes[50]
+        del self.map_data[50]
+        del self.map_shapes[50]
+        del self.map_data[50]
+        del self.map_shapes[5]
+        del self.map_data[5]
 
+    def generateMap(self):
+        points = []
+        total_points_count = 0
 
-    def renderGraph(self):
+        for idx, record, shape in zip(range(len(self.map_shapes)), self.map_data, self.map_shapes):
+            polygon = QPolygonF()
+            polygon.append(list(map(lambda x: QPointF(x[0] * 10, -10 * x[1]), shape.points)))
+            print(idx, record)
+            self.scene.addPolygon(polygon, brush=QBrush(Qt.gray))
+
+        print(len(self.map_shapes))
+        print(total_points_count, "->", len(points))
+
+    def generateGraph(self):
         offset = self.RADIUS // 2
         for edge in self.edges:
             self.scene.addLine(edge.source.x + offset, edge.source.y + offset, edge.target.x + offset, edge.target.y + offset, QPen(Qt.white))
@@ -145,7 +168,7 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    ex = MainWindow(None)
+    ex = MainWindow(sys.argv[1], sys.argv[2])
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
