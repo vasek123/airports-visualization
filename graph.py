@@ -57,6 +57,7 @@ class Edge():
             previous_neighbour=self.source, next_neighbour=next_neighbour
         )
 
+        self.first_subdivision_point = subdivision_point
         self.subdivision_points.append(subdivision_point)
 
         current_point = next_neighbour

@@ -16,6 +16,7 @@ from graph import Node, Edge
 from PySide6.QtCore import QPointF, Qt, QSize
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
 from PySide6.QtGui import QBrush, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
 import shapefile
 
 
@@ -47,6 +48,7 @@ class VisGraphicsView(QGraphicsView):
         self.startY = 0.0
         self.distance = 0.0
         self.myScene = scene
+        self.setViewport(QOpenGLWidget())
         self.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing | QPainter.SmoothPixmapTransform)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -86,16 +88,35 @@ class MainWindow(QMainWindow):
         self.nodes = []
         self.edges = []
 
-        # self.loadShapeFile(map_shape_file_path)
-        # self.generateMap()
+        self.loadShapeFile(map_shape_file_path)
+        self.generateMap()
 
         self.loadGraph(airlines_file_path)
         self.generateGraph()
+
+        for edge in self.edges:
+            edge.add_subdivisions()
+            self.scene.addPath(self.generateEdgePath(edge))
+            # edge.add_subdivisions()
+            # print(edge.subdivision_points)
+
+        # self.createEdgesPath()
 
 
         # self.generateAndMapDataOld()
         # self.setMinimumSize(800, 600)
         self.show()
+
+    def createEdgesPath(self):
+        if not self.edges:
+            return
+
+        path = QPainterPath()
+        for edge in self.edges:
+            path.moveTo(edge.source.x, edge.source.y)
+            self.generateEdgePath(edge, path)
+
+        self.scene.addPath(path)
 
     def createGraphicView(self):
         self.scene = VisGraphicsScene()
@@ -136,18 +157,35 @@ class MainWindow(QMainWindow):
             polygon = QPolygonF()
             polygon.append(list(map(lambda x: QPointF(x[0] * 10, -10 * x[1]), shape.points)))
             print(idx, record)
-            self.scene.addPolygon(polygon, brush=QBrush(Qt.gray))
+            self.scene.addPolygon(polygon, pen=QPen(Qt.black), brush=QBrush(Qt.gray))
 
         print(len(self.map_shapes))
         print(total_points_count, "->", len(points))
 
     def generateGraph(self):
         offset = self.RADIUS // 2
-        for edge in self.edges:
-            self.scene.addLine(edge.source.x + offset, edge.source.y + offset, edge.target.x + offset, edge.target.y + offset, QPen(Qt.white))
+        # for edge in self.edges:
+            # self.scene.addLine(edge.source.x + offset, edge.source.y + offset, edge.target.x + offset, edge.target.y + offset, QPen(Qt.white))
 
         for node in self.nodes:
             self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
+
+    def generateEdgePath(self, edge):
+        path = QPainterPath(QPointF(edge.source.x, edge.source.y))
+        
+        # If there are no subdivision points, draw a line to the target node
+        if not edge.subdivision_points:
+            path.lineTo(edge.target.x, edge.target.y)
+            return path
+
+        current_point = edge.first_subdivision_point
+        while True:
+            path.lineTo(current_point.x, current_point.y)
+            if current_point == edge.target:
+                break
+            current_point = current_point.next_neighbour
+
+        return path
 
     def generateAndMapDataOld(self):
         #Generate random data
@@ -171,8 +209,10 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines.graphml")
-    parser.add_argument("--map", "-m", type=str, required=False, default="data/cb_2019_us_state_5m.shp")
+    parser.add_argument("--map", "-m", type=str, required=False, default="data/cb_2019_us_state_5m/cb_2019_us_state_5m.shp")
     args = parser.parse_args()
+
+    print(args.map)
 
     app = QApplication(sys.argv)
     ex = MainWindow(args.graph, args.map)
