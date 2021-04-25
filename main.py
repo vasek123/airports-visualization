@@ -10,6 +10,7 @@
 # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import sys, random, math
+import argparse
 import networkx as nx
 from graph import Node, Edge
 from PySide6.QtCore import QPointF, Qt, QSize
@@ -167,8 +168,14 @@ class MainWindow(QMainWindow):
             ellipse = self.scene.addEllipse(x[i], y[i], d, d, self.scene.pen, self.brush[c[i]])
 
 def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines.graphml")
+    parser.add_argument("--map", "-m", type=str, required=False, default="data/cb_2019_us_state_5m.shp")
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
-    ex = MainWindow(sys.argv[1], sys.argv[2])
+    ex = MainWindow(args.graph, args.map)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
