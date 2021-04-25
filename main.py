@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
 
         for edge in self.edges:
             edge.add_subdivisions()
+            edge.add_subdivisions()
             self.scene.addPath(self.generateEdgePath(edge))
             # edge.add_subdivisions()
             # print(edge.subdivision_points)

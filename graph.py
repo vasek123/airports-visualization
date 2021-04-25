@@ -28,17 +28,7 @@ class Edge():
         """Returns the direction vector of the edge"""
 
         return compute_direction_vector(self.source, self.target, normalized)
-
-        """
-        vec = (self.target.x - self.source.x, self.target.y - self.source.y)
-        if normalized:
-            size = np.sqrt(np.sum(np.power(vec, 2)))
-            vec[0] /= size
-            vec[1] /= size
-
-        return vec
-        """
-
+ 
     def add_subdivisions(self):
         """Subdivides the edge into more parts"""
 
@@ -53,7 +43,7 @@ class Edge():
             next_neighbour = self.target
 
         subdivision_point = SubdivisionPoint(
-            x=self.source.x + direction[0]/2, y=self.target.y + direction[1]/2,
+            x=self.source.x + direction[0]/2, y=self.source.y + direction[1]/2,
             previous_neighbour=self.source, next_neighbour=next_neighbour
         )
 
