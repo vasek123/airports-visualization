@@ -12,12 +12,16 @@
 import sys, random, math
 import argparse
 import networkx as nx
+from networkx.generators.community import _generate_communities
+import shapefile
+import topojson as tp
+import geojson
+import json
 from graph import Node, Edge
 from PySide6.QtCore import QPointF, Qt, QSize
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
-from PySide6.QtGui import QBrush, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter
+from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
+from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-import shapefile
 
 
 class VisGraphicsScene(QGraphicsScene):
@@ -25,8 +29,13 @@ class VisGraphicsScene(QGraphicsScene):
         super(VisGraphicsScene, self).__init__()
         self.selection = None
         self.wasDragg = False
-        self.pen = QPen(Qt.black)
-        self.selected = QPen(Qt.red)
+        colorGreen = QColor(Qt.green)
+        colorGreen.setAlphaF(0.5)
+        colorRed = QColor(Qt.red)
+        colorRed.setAlphaF(0.5)
+        # self.pen = QPen(Qt.black)
+        self.pen = QPen(colorGreen)
+        self.selected = QPen(colorRed)
 
     def mouseReleaseEvent(self, event): 
         if self.wasDragg:
@@ -89,6 +98,7 @@ class MainWindow(QMainWindow):
         self.edges = []
 
         self.loadShapeFile(map_shape_file_path)
+        # self.loadTopology(map_shape_file_path)
         self.generateMap()
 
         self.loadGraph(airlines_file_path)
@@ -97,15 +107,13 @@ class MainWindow(QMainWindow):
         for edge in self.edges:
             edge.add_subdivisions()
             edge.add_subdivisions()
+            edge.add_subdivisions()
+            edge.add_subdivisions()
             self.scene.addPath(self.generateEdgePath(edge))
-            # edge.add_subdivisions()
-            # print(edge.subdivision_points)
-
-        # self.createEdgesPath()
-
 
         # self.generateAndMapDataOld()
         # self.setMinimumSize(800, 600)
+
         self.show()
 
     def createEdgesPath(self):
@@ -141,6 +149,7 @@ class MainWindow(QMainWindow):
             self.map_shapes = sf.shapes()
             self.map_data = sf.records()
 
+        """
         del self.map_shapes[39] # Hawaii
         del self.map_data[39]
         del self.map_shapes[50]
@@ -149,19 +158,45 @@ class MainWindow(QMainWindow):
         del self.map_data[50]
         del self.map_shapes[5]
         del self.map_data[5]
+        """
+
+    def loadTopology(self, input_file_path):
+        with open(input_file_path, "r") as f:
+            topology = geojson.load(f)
+        
+        self.topology = topology
 
     def generateMap(self):
-        points = []
-        total_points_count = 0
 
+        """
+        def generatePolygon(geometry):
+            polygon = QPolygonF()
+            print(geometry)
+            for point in geometry:
+                polygon.append(QPointF(*point))
+
+            return polygon
+
+        for feature in self.topology.features:
+            if feature["geometry"]["type"] == "Polygon":
+                geometry = feature["geometry"]["coordinates"][0]
+                polygon = generatePolygon(geometry)
+                self.scene.addPolygon(polygon, pen=self.scene.pen)
+            elif feature["geometry"]["type"] == "MultiPolygon":
+                print(len(feature["geometry"]["coordinates"]))
+                for geometry in feature["geometry"]["coordinates"]:
+                    print(geometry)
+                    polygon = generatePolygon(geometry[0])
+                    self.scene.addPolygon(polygon, pen=self.scene.pen)
+            else:
+                print("Different type", feature["geometry"]["type"])
+        """
+        
         for idx, record, shape in zip(range(len(self.map_shapes)), self.map_data, self.map_shapes):
             polygon = QPolygonF()
             polygon.append(list(map(lambda x: QPointF(x[0] * 10, -10 * x[1]), shape.points)))
-            print(idx, record)
-            self.scene.addPolygon(polygon, pen=QPen(Qt.black), brush=QBrush(Qt.gray))
+            self.scene.addPolygon(polygon, pen=self.scene.pen)
 
-        print(len(self.map_shapes))
-        print(total_points_count, "->", len(points))
 
     def generateGraph(self):
         offset = self.RADIUS // 2
@@ -172,7 +207,7 @@ class MainWindow(QMainWindow):
             self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
 
     def generateEdgePath(self, edge):
-        path = QPainterPath(QPointF(edge.source.x, edge.source.y))
+        path = QPainterPath(QPointF(edge.source.x + self.RADIUS/2, edge.source.y + self.RADIUS/2))
         
         # If there are no subdivision points, draw a line to the target node
         if not edge.subdivision_points:
@@ -181,9 +216,10 @@ class MainWindow(QMainWindow):
 
         current_point = edge.first_subdivision_point
         while True:
-            path.lineTo(current_point.x, current_point.y)
             if current_point == edge.target:
+                path.lineTo(current_point.x + self.RADIUS/2, current_point.y + self.RADIUS/2)
                 break
+            path.lineTo(current_point.x, current_point.y)
             current_point = current_point.next_neighbour
 
         return path
