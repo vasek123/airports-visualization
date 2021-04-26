@@ -17,6 +17,7 @@ import shapefile
 import topojson as tp
 import geojson
 import json
+import csv
 from graph import Node, Edge
 from PySide6.QtCore import QPointF, Qt, QSize
 from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
@@ -87,7 +88,7 @@ class VisGraphicsView(QGraphicsView):
 
 class MainWindow(QMainWindow):
 
-    RADIUS = 10
+    RADIUS = 4
 
     def __init__(self, airlines_file_path, map_shape_file_path):
         super(MainWindow, self).__init__()
@@ -97,8 +98,8 @@ class MainWindow(QMainWindow):
         self.nodes = []
         self.edges = []
 
-        self.loadShapeFile(map_shape_file_path)
-        # self.loadTopology(map_shape_file_path)
+        # self.loadShapeFile(map_shape_file_path)
+        self.loadTopology(map_shape_file_path)
         self.generateMap()
 
         self.loadGraph(airlines_file_path)
@@ -109,7 +110,7 @@ class MainWindow(QMainWindow):
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
-            self.scene.addPath(self.generateEdgePath(edge))
+            # self.scene.addPath(self.generateEdgePath(edge))
 
         # self.generateAndMapDataOld()
         # self.setMinimumSize(800, 600)
@@ -139,7 +140,8 @@ class MainWindow(QMainWindow):
 
         self.nodes = [None] * len(graph.nodes())
         for node_id, node in graph.nodes(data=True):
-            self.nodes[int(node_id)] = Node(id=int(node_id), x=float(node["x"]), y=float(node["y"]))
+            node = Node(id=int(node_id), x=float(node["x"]) - self.RADIUS/2, y=float(node["y"]) - self.RADIUS/2)
+            self.nodes[int(node_id)] = node
 
         for source, target in graph.edges():
             self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
@@ -168,35 +170,28 @@ class MainWindow(QMainWindow):
 
     def generateMap(self):
 
-        """
+        IGNORED_STATES = ["Alaska", "Hawaii"]
+
         def generatePolygon(geometry):
             polygon = QPolygonF()
-            print(geometry)
             for point in geometry:
                 polygon.append(QPointF(*point))
 
             return polygon
 
         for feature in self.topology.features:
+            if feature["properties"]["name"] in IGNORED_STATES:
+                continue
+
             if feature["geometry"]["type"] == "Polygon":
                 geometry = feature["geometry"]["coordinates"][0]
                 polygon = generatePolygon(geometry)
                 self.scene.addPolygon(polygon, pen=self.scene.pen)
             elif feature["geometry"]["type"] == "MultiPolygon":
-                print(len(feature["geometry"]["coordinates"]))
                 for geometry in feature["geometry"]["coordinates"]:
-                    print(geometry)
                     polygon = generatePolygon(geometry[0])
                     self.scene.addPolygon(polygon, pen=self.scene.pen)
-            else:
-                print("Different type", feature["geometry"]["type"])
-        """
         
-        for idx, record, shape in zip(range(len(self.map_shapes)), self.map_data, self.map_shapes):
-            polygon = QPolygonF()
-            polygon.append(list(map(lambda x: QPointF(x[0] * 10, -10 * x[1]), shape.points)))
-            self.scene.addPolygon(polygon, pen=self.scene.pen)
-
 
     def generateGraph(self):
         offset = self.RADIUS // 2
@@ -245,11 +240,9 @@ class MainWindow(QMainWindow):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines.graphml")
-    parser.add_argument("--map", "-m", type=str, required=False, default="data/cb_2019_us_state_5m/cb_2019_us_state_5m.shp")
+    parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines-projected.graphml")
+    parser.add_argument("--map", "-m", type=str, required=False, default="data/us-states.json")
     args = parser.parse_args()
-
-    print(args.map)
 
     app = QApplication(sys.argv)
     ex = MainWindow(args.graph, args.map)
