@@ -4,8 +4,7 @@ def compute_direction_vector(source, target, normalized=False):
     vec = (target.x - source.x, target.y - source.y)
     if normalized:
         size = np.sqrt(np.sum(np.power(vec, 2)))
-        vec[0] /= size
-        vec[1] /= size
+        vec = (vec[0] / size, vec[1] / size)
 
     return vec
 
@@ -61,7 +60,9 @@ class Edge():
                 previous_neighbour=current_point, next_neighbour=current_point.next_neighbour
             )
 
-            subdivision_point.x += np.random.uniform(10)
+            self.subdivision_points.append(subdivision_point)
+
+            subdivision_point.x += np.random.uniform(100)
             subdivision_point.y += np.random.uniform(10)
 
             current_point.next_neighbour = subdivision_point
@@ -76,3 +77,9 @@ class SubdivisionPoint():
         self.y = y
         self.previous_neighbour = previous_neighbour
         self.next_neighbour = next_neighbour
+
+    def distance_from(self, other):
+        return np.linalg.norm(compute_direction_vector(self, other))
+
+    def get_direction_to(self, other):
+        return compute_direction_vector(self, other, normalized=True)

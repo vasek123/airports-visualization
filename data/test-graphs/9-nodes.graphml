@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+
+  <key id="y" for="node" attr.name="y" attr.type="string" />
+  <key id="tooltip" for="node" attr.name="tooltip" attr.type="string" />
+  <key id="x" for="node" attr.name="x" attr.type="string" />
+
+  <graph edgedefault="undirected">
+    <node id="0">
+      <data key="x">227.3309041337617</data>
+      <data key="tooltip">SLC(lngx=-111.966667,laty=40.788333)</data>
+      <data key="y">234.42139846836415</data>
+    </node>
+    <node id="1">
+      <data key="x">197.93939484009815</data>
+      <data key="tooltip">PHX(lngx=-112.033333,laty=33.433333)</data>
+      <data key="y">400.23120326434343</data>
+    </node>
+    <node id="2">
+      <data key="x">152.16904657095176</data>
+      <data key="tooltip">LAS(lngx=-115.166667,laty=36.083333)</data>
+      <data key="y">329.9878708310529</data>
+    </node>
+    <node id="3">
+      <data key="x">34.620138885588915</data>
+      <data key="tooltip">SFO(lngx=-122.375,laty=37.618889)</data>
+      <data key="y">265.08951931069487</data>
+    </node>
+    <node id="4">
+      <data key="x">99.42112719353486</data>
+      <data key="tooltip">SAN(lngx=-117.183333,laty=32.733333)</data>
+      <data key="y">396.98219232578947</data>
+    </node>
+    <node id="5">
+      <data key="x">83.25939369857088</data>
+      <data key="tooltip">LAX(lngx=-118.407222,laty=33.9425)</data>
+      <data key="y">364.84731379235836</data>
+    </node>
+    <node id="6">
+      <data key="x">169.54154082062803</data>
+      <data key="tooltip">BOI(lngx=-116.222778,laty=43.564444)</data>
+      <data key="y">158.7193370116497</data>
+    </node>
+    <node id="7">
+      <data key="x">873.8346268045376</data>
+      <data key="tooltip">JFK(lngx=-73.783333,laty=40.633333)</data>
+      <data key="y">216.6345337108694</data>
+    </node>
+    <node id="8">
+      <data key="x">468.67417011165384</data>
+      <data key="tooltip">OKC(lngx=-97.600833,laty=35.393056)</data>
+      <data key="y">380.5364980851499</data>
+    </node>
+
+    <edge source="0" target="1" id="0" />
+    <edge source="0" target="4" id="1" />
+    <edge source="0" target="3" id="2" />
+    <edge source="1" target="4" id="3" />
+    <edge source="1" target="3" id="4" />
+    <edge source="5" target="2" id="5" />
+    <edge source="5" target="0" id="6" />
+    <edge source="3" target="5" id="7" />
+    <edge source="0" target="6" id="8" />
+    <edge source="7" target="8" id="9" />
+
+  </graph>
+</graphml>

@@ -9,10 +9,12 @@
 # OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING 
 # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from fdeb import FDEB
 import sys, random, math
+import time
 import argparse
 import networkx as nx
-from networkx.generators.community import _generate_communities
+import numpy as np
 import shapefile
 import topojson as tp
 import geojson
@@ -21,7 +23,7 @@ import csv
 from graph import Node, Edge
 from PySide6.QtCore import QPointF, Qt, QSize
 from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
-from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter
+from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
@@ -31,7 +33,7 @@ class VisGraphicsScene(QGraphicsScene):
         self.selection = None
         self.wasDragg = False
         colorGreen = QColor(Qt.green)
-        colorGreen.setAlphaF(0.5)
+        # colorGreen.setAlphaF(0.5)
         colorRed = QColor(Qt.red)
         colorRed.setAlphaF(0.5)
         # self.pen = QPen(Qt.black)
@@ -98,7 +100,9 @@ class MainWindow(QMainWindow):
         self.nodes = []
         self.edges = []
 
-        # self.loadShapeFile(map_shape_file_path)
+        self.paths = []
+        self.pathItems = []
+
         self.loadTopology(map_shape_file_path)
         self.generateMap()
 
@@ -109,24 +113,26 @@ class MainWindow(QMainWindow):
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
-            edge.add_subdivisions()
-            # self.scene.addPath(self.generateEdgePath(edge))
 
-        # self.generateAndMapDataOld()
-        # self.setMinimumSize(800, 600)
-
+        fdeb = FDEB(self.nodes, self.edges)
+        print(fdeb.compatibility)
+        print(np.max(np.max(fdeb.compatibility)))
+        print(np.min(np.min(fdeb.compatibility)))
+        # forces = fdeb.calculate_forces()
+        # print(forces)
+            
         self.show()
 
     def createEdgesPath(self):
         if not self.edges:
             return
 
-        path = QPainterPath()
         for edge in self.edges:
-            path.moveTo(edge.source.x, edge.source.y)
-            self.generateEdgePath(edge, path)
+            path = self.generateEdgePath(edge)
+            self.paths.append(path)
+            self.pathItems.append(self.scene.addPath(path))
+            self.pathItems[-1].setPen(QPen(Qt.blue))
 
-        self.scene.addPath(path)
 
     def createGraphicView(self):
         self.scene = VisGraphicsScene()
@@ -146,30 +152,14 @@ class MainWindow(QMainWindow):
         for source, target in graph.edges():
             self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
 
-    def loadShapeFile(self, input_file_path):
-        with shapefile.Reader(input_file_path) as sf:
-            self.map_shapes = sf.shapes()
-            self.map_data = sf.records()
-
-        """
-        del self.map_shapes[39] # Hawaii
-        del self.map_data[39]
-        del self.map_shapes[50]
-        del self.map_data[50]
-        del self.map_shapes[50]
-        del self.map_data[50]
-        del self.map_shapes[5]
-        del self.map_data[5]
-        """
-
     def loadTopology(self, input_file_path):
         with open(input_file_path, "r") as f:
             topology = geojson.load(f)
-        
-        self.topology = topology
+            self.topology = topology
 
     def generateMap(self):
 
+        # mapBrush = QBrush(QColor("#FFF2AF"))
         IGNORED_STATES = ["Alaska", "Hawaii"]
 
         def generatePolygon(geometry):
@@ -194,12 +184,26 @@ class MainWindow(QMainWindow):
         
 
     def generateGraph(self):
-        offset = self.RADIUS // 2
-        # for edge in self.edges:
-            # self.scene.addLine(edge.source.x + offset, edge.source.y + offset, edge.target.x + offset, edge.target.y + offset, QPen(Qt.white))
-
         for node in self.nodes:
             self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
+
+        self.createEdgesPath()
+
+    """
+    def randomPathChange(self, times=1, change=1):
+        for t in range(times):
+            for path, item in zip(self.paths, self.pathItems):
+                for idx in range(1, path.elementCount() - 1):
+                    change_x = np.random.uniform(-change, change)
+                    change_y = np.random.uniform(-change, change)
+
+                    # print(path.elementAt(idx).x, path.elementAt(idx).y, end=" ")
+                    path.setElementPositionAt(
+                        idx, path.elementAt(idx).x + change_x, path.elementAt(idx).y + change_y)
+                    # print(path.elementAt(idx).x, path.elementAt(idx).y)
+
+                item.setPath(path)
+    """
 
     def generateEdgePath(self, edge):
         path = QPainterPath(QPointF(edge.source.x + self.RADIUS/2, edge.source.y + self.RADIUS/2))

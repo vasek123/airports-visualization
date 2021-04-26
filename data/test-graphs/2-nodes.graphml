@@ -10,14 +10,14 @@
 
     <!-- nodes -->
     <node id="0">
-      <data key="x">-922.24444</data>
+      <data key="x">567.8266392516755</data>
       <data key="tooltip">LIT(lngx=-92.224444,laty=34.729444)</data>
-      <data key="y">-347.29444</data>
+      <data key="y">394.58338569904913</data>
     </node>
     <node id="1">
-      <data key="x">-814.42222</data>
+      <data key="x">744.5775118433133</data>
       <data key="tooltip">CAK(lngx=-81.442222,laty=40.916111)</data>
-      <data key="y">-409.16111</data>
+      <data key="y">235.3690109332748</data>
     </node>
 
     <!-- edges -->
