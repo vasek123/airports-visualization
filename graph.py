@@ -46,8 +46,10 @@ class Edge():
             previous_neighbour=self.source, next_neighbour=next_neighbour
         )
 
+        """
         subdivision_point.x += np.random.uniform(10)
         subdivision_point.y += np.random.uniform(10)
+        """
 
         self.first_subdivision_point = subdivision_point
         self.subdivision_points.append(subdivision_point)

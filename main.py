@@ -39,17 +39,19 @@ class VisGraphicsScene(QGraphicsScene):
         # self.pen = QPen(Qt.black)
         self.pen = QPen(colorGreen)
         self.selected = QPen(colorRed)
+        self.selectedOrigColor = None
 
     def mouseReleaseEvent(self, event): 
         if self.wasDragg:
             return
         # If something has been previously selected, set its outline back to black
         if self.selection:
-            self.selection.setPen(self.pen)
+            self.selection.setPen(self.pen if self.selectedOrigColor is None else self.selectedOrigColor)
         # Try to get the new item
         item = self.itemAt(event.scenePos(), QTransform())
         if item:
             # Sets its outline to the "selected" color and store it in self.selection
+            self.selectedOrigColor = item.pen()
             item.setPen(self.selected)
             self.selection = item
 
@@ -100,7 +102,6 @@ class MainWindow(QMainWindow):
         self.nodes = []
         self.edges = []
 
-        self.paths = []
         self.pathItems = []
 
         self.loadTopology(map_shape_file_path)
@@ -113,15 +114,26 @@ class MainWindow(QMainWindow):
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
+            edge.add_subdivisions()
 
-        fdeb = FDEB(self.nodes, self.edges)
-        print(fdeb.compatibility)
-        print(np.max(np.max(fdeb.compatibility)))
-        print(np.min(np.min(fdeb.compatibility)))
-        # forces = fdeb.calculate_forces()
-        # print(forces)
+        self.fdeb = FDEB(self.nodes, self.edges)
             
         self.show()
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        self.fdeb.iteration_step()
+        # print("FDEB iteration complete")
+        self.updateEdgePaths()
+        # print("Path update complete")
+        return super().keyPressEvent(event)
+
+    def updateEdgePaths(self):
+        if not self.edges:
+            return
+
+        for idx, edge in enumerate(self.edges):
+            path = self.generateEdgePath(edge)
+            self.pathItems[idx].setPath(path)
 
     def createEdgesPath(self):
         if not self.edges:
@@ -129,10 +141,9 @@ class MainWindow(QMainWindow):
 
         for edge in self.edges:
             path = self.generateEdgePath(edge)
-            self.paths.append(path)
-            self.pathItems.append(self.scene.addPath(path))
-            self.pathItems[-1].setPen(QPen(Qt.blue))
-
+            pathItem = self.scene.addPath(path)
+            pathItem.setPen(QPen(Qt.blue))
+            self.pathItems.append(pathItem)
 
     def createGraphicView(self):
         self.scene = VisGraphicsScene()
