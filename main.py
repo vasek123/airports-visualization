@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
 
         self.nodes = []
         self.edges = []
+        self.step = 1
 
         self.pathItems = []
 
@@ -114,17 +115,20 @@ class MainWindow(QMainWindow):
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
-            edge.add_subdivisions()
 
         self.fdeb = FDEB(self.nodes, self.edges)
             
         self.show()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        self.fdeb.iteration_step()
+        self.fdeb.iteration_step(self.step)
+        self.step += 1
         # print("FDEB iteration complete")
         self.updateEdgePaths()
         # print("Path update complete")
+        print("step:", self.step)
+        print("PathItems count:", len(self.pathItems))
+        print("Edges count:", len(self.edges))
         return super().keyPressEvent(event)
 
     def updateEdgePaths(self):
@@ -138,11 +142,15 @@ class MainWindow(QMainWindow):
     def createEdgesPath(self):
         if not self.edges:
             return
+        
+        color = QColor(Qt.blue)
+        color.setAlphaF(0.75)
+        pen = QPen(color)
 
         for edge in self.edges:
             path = self.generateEdgePath(edge)
             pathItem = self.scene.addPath(path)
-            pathItem.setPen(QPen(Qt.blue))
+            pathItem.setPen(pen)
             self.pathItems.append(pathItem)
 
     def createGraphicView(self):
@@ -155,13 +163,24 @@ class MainWindow(QMainWindow):
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
 
+        NUM = 100
         self.nodes = [None] * len(graph.nodes())
+        self.nodes = [None] * min(NUM, len(graph.nodes()))
         for node_id, node in graph.nodes(data=True):
+            if int(node_id) >= NUM:
+                continue
             node = Node(id=int(node_id), x=float(node["x"]) - self.RADIUS/2, y=float(node["y"]) - self.RADIUS/2)
             self.nodes[int(node_id)] = node
 
+        added = []
         for source, target in graph.edges():
-            self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
+            if int(source) < NUM and int(target) < NUM:
+                if (int(target), int(source)) in added or (int(source), int(target)) in added:
+                    print("ay")
+                    continue
+                self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
+                added.append((int(source), int(target)))
+                print((int(source), int(target)))
 
     def loadTopology(self, input_file_path):
         with open(input_file_path, "r") as f:
@@ -195,10 +214,9 @@ class MainWindow(QMainWindow):
         
 
     def generateGraph(self):
+        self.createEdgesPath()
         for node in self.nodes:
             self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
-
-        self.createEdgesPath()
 
     """
     def randomPathChange(self, times=1, change=1):
@@ -221,7 +239,7 @@ class MainWindow(QMainWindow):
         
         # If there are no subdivision points, draw a line to the target node
         if not edge.subdivision_points:
-            path.lineTo(edge.target.x, edge.target.y)
+            path.lineTo(edge.target.x + self.RADIUS/2, edge.target.y + self.RADIUS/2)
             return path
 
         current_point = edge.first_subdivision_point

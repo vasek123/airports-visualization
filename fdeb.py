@@ -16,7 +16,7 @@ class FDEB():
         
         for idx_a, edge_a in enumerate(self.edges):
             for idx_b, edge_b in enumerate(self.edges):
-                if idx_a <= idx_b:
+                if idx_a <= idx_b or self.compatibility[idx_a, idx_b] < 0.15:
                     continue
 
                 for i in range(subdivision_points_count):
@@ -24,7 +24,7 @@ class FDEB():
                     # There will be a problem with forces that are too large for item too close together
                     distance = edge_a.subdivision_points[i].distance_from(edge_b.subdivision_points[i])
                     if distance >= 1:
-                        f = 1.0 / distance ** 2
+                        f = 1.0 / distance
                         f *= self.compatibility[idx_a, idx_b]
 
                         direction *= f
@@ -38,7 +38,7 @@ class FDEB():
                     neighbour_dir = np.array(sub_point.get_direction_to(neighbour))
                     neighbour_dist = sub_point.distance_from(neighbour)
                     if neighbour_dist > 1:
-                        forces[idx_a, i, :] += 0.2 * neighbour_dir * neighbour_dist
+                        forces[idx_a, i, :] += 0.1 * neighbour_dir * neighbour_dist
 
         return forces
 
@@ -56,7 +56,7 @@ class FDEB():
         counter = 0
         for i in range(len(self.edges)):
             for j in range(len(self.edges)):
-                if compatibility[i, j] > 0.05:
+                if compatibility[i, j] > 0.1:
                     counter += 1
 
         print((len(self.edges) ** 2) / 2, "->", counter / 2)
@@ -86,9 +86,15 @@ class FDEB():
         subdivision_points_count = len(self.edges[0].subdivision_points)
         for edge_idx, edge in enumerate(self.edges):
             for sub_idx in range(subdivision_points_count):
-                edge.subdivision_points[sub_idx].x += 1 * forces[edge_idx, sub_idx, 0]
-                edge.subdivision_points[sub_idx].y += 1 * forces[edge_idx, sub_idx, 1]
+                edge.subdivision_points[sub_idx].x += 1.1 * forces[edge_idx, sub_idx, 0]
+                edge.subdivision_points[sub_idx].y += 1.1 * forces[edge_idx, sub_idx, 1]
 
-    def iteration_step(self):
+    def iteration_step(self, step):
+        """
+        if step % 20 == 0:
+            for edge in self.edges:
+                edge.add_subdivisions()
+        """
+
         forces = self.calculate_forces()
         self.apply_forces(forces)
