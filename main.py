@@ -163,7 +163,7 @@ class MainWindow(QMainWindow):
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
 
-        NUM = 100
+        NUM = 45
         self.nodes = [None] * len(graph.nodes())
         self.nodes = [None] * min(NUM, len(graph.nodes()))
         for node_id, node in graph.nodes(data=True):

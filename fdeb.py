@@ -1,6 +1,9 @@
 import numpy as np
+from numba import jit, prange
+from numba.experimental import jitclass
 from graph import Node, Edge
 from typing import List
+import time
 
 # Possibly compute the compatibilities when needed, not before hand
 
@@ -45,13 +48,22 @@ class FDEB():
     def compute_compatibilities(self):
         compatibility = np.ones((len(self.edges), len(self.edges)))
 
+        start = time.time()
         for idx_a, edge_a in enumerate(self.edges):
             for idx_b, edge_b in enumerate(self.edges):
                 if idx_a <= idx_b:
                     continue
 
-                compatibility[idx_a, idx_b] = self.edge_compatibility_measure(edge_a, edge_b)
+                compatibility[idx_a, idx_b] = self.edge_compatibility_measure(
+                    (edge_a.source.x, edge_a.source.y), edge_a.get_direction_vector(),
+                    (edge_b.source.x, edge_b.source.y), edge_b.get_direction_vector()
+                )
+
                 compatibility[idx_b, idx_a] = compatibility[idx_a, idx_b]
+
+        end = time.time()
+
+        # print("Duration:", end - start)
 
         counter = 0
         for i in range(len(self.edges)):
@@ -63,13 +75,13 @@ class FDEB():
 
         return compatibility
 
-    def edge_compatibility_measure(self, edge_a: Edge, edge_b: Edge):
-        edge_a_dir = np.array(edge_a.get_direction_vector())
-        edge_b_dir = np.array(edge_b.get_direction_vector())
+    @staticmethod
+    @jit(nopython=True)
+    def edge_compatibility_measure(edge_a_source, edge_a_dir, edge_b_source, edge_b_dir):
         len_a = np.linalg.norm(edge_a_dir)
         len_b = np.linalg.norm(edge_b_dir)
-        mid_a = np.array([edge_a.source.x + edge_a_dir[0] / 2, edge_a.source.y + edge_a_dir[1] / 2])
-        mid_b = np.array([edge_b.source.x + edge_b_dir[0] / 2, edge_b.source.y + edge_b_dir[1] / 2])
+        mid_a = np.array([edge_a_source[0] + edge_a_dir[0] / 2, edge_a_source[1] + edge_a_dir[1] / 2])
+        mid_b = np.array([edge_b_source[0] + edge_b_dir[0] / 2, edge_b_source[1] + edge_b_dir[1] / 2])
         l_avg = (len_a + len_b) / 2
 
         x = np.dot(edge_a_dir, edge_b_dir) / (len_a * len_b)
@@ -81,6 +93,7 @@ class FDEB():
         position_compatibility = l_avg / (l_avg + np.linalg.norm(mid_a - mid_b))
 
         return angle_compatibility * scale_compatibility * position_compatibility
+
 
     def apply_forces(self, forces):
         subdivision_points_count = len(self.edges[0].subdivision_points)

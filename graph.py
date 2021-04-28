@@ -1,12 +1,20 @@
 import numpy as np
+from numba import jit
+from numba.experimental import jitclass
 
+@jit(nopython=True)
 def compute_direction_vector(source, target, normalized=False):
-    vec = (target.x - source.x, target.y - source.y)
+    # vec = (target.x - source.x, target.y - source.y)
+    vec = target - source
     if normalized:
-        size = np.sqrt(np.sum(np.power(vec, 2)))
-        vec = (vec[0] / size, vec[1] / size)
+        size = np.linalg.norm(vec)
+        vec = vec / size
 
     return vec
+
+@jit(nopython=True)
+def distance_from(source, target):
+    return np.linalg.norm(compute_direction_vector(source, target))
 
 class Node():
     def __init__(self, id: int, x: float, y: float):
@@ -26,7 +34,11 @@ class Edge():
     def get_direction_vector(self, normalized=False) -> tuple:
         """Returns the direction vector of the edge"""
 
-        return compute_direction_vector(self.source, self.target, normalized)
+        return compute_direction_vector(
+            np.array([self.source.x, self.source.y]),
+            np.array([self.target.x, self.target.y]),
+            normalized
+        )
  
     def add_subdivisions(self):
         """Subdivides the edge into more parts"""
@@ -35,10 +47,16 @@ class Edge():
         
         # Create the new first subdivision point
         if self.first_subdivision_point is not None:
-            direction = compute_direction_vector(self.source, self.first_subdivision_point)
+            direction = compute_direction_vector(
+                np.array([self.source.x, self.source.y]),
+                np.array([self.first_subdivision_point.x, self.first_subdivision_point.y])
+            )
             next_neighbour = self.first_subdivision_point
         else:
-            direction = compute_direction_vector(self.source, self.target)
+            direction = compute_direction_vector(
+                np.array([self.source.x, self.source.y]),
+                np.array([self.target.x, self.target.y])
+            )
             next_neighbour = self.target
 
         subdivision_point = SubdivisionPoint(
@@ -56,7 +74,10 @@ class Edge():
 
         current_point = next_neighbour
         while current_point != self.target:
-            direction = compute_direction_vector(current_point, current_point.next_neighbour)
+            direction = compute_direction_vector(
+                np.array([current_point.x, current_point.y]),
+                np.array([current_point.next_neighbour.x, current_point.next_neighbour.y])
+            )
             subdivision_point = SubdivisionPoint(
                 x=current_point.x + direction[0]/2, y=current_point.y + direction[1]/2,
                 previous_neighbour=current_point, next_neighbour=current_point.next_neighbour
@@ -81,7 +102,21 @@ class SubdivisionPoint():
         self.next_neighbour = next_neighbour
 
     def distance_from(self, other):
-        return np.linalg.norm(compute_direction_vector(self, other))
+        """
+        return np.linalg.norm(compute_direction_vector(
+            np.array([self.x, self.y]),
+            np.array([other.x, other.y])
+        ))
+        """
+
+        return distance_from(
+            np.array([self.x, self.y]),
+            np.array([other.x, other.y])
+        )
 
     def get_direction_to(self, other):
-        return compute_direction_vector(self, other, normalized=True)
+        return compute_direction_vector(
+            np.array([self.x, self.y]),
+            np.array([other.x, other.y]),
+            normalized=True
+        )
