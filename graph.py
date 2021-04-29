@@ -1,10 +1,9 @@
 import numpy as np
 
 def compute_direction_vector(source, target, normalized=False):
-    vec = (target.x - source.x, target.y - source.y)
+    vec = np.array([target.x - source.x, target.y - source.y])
     if normalized:
-        size = np.sqrt(np.sum(np.power(vec, 2)))
-        vec = (vec[0] / size, vec[1] / size)
+        vec /= np.linalg.norm(vec)
 
     return vec
 
@@ -23,10 +22,16 @@ class Edge():
         self.first_subdivision_point = None
         self.subdivision_points = []
 
+        self._direction_vector = compute_direction_vector(self.source, self.target)
+        self._direction_vector_norm = self._direction_vector / np.linalg.norm(self._direction_vector)
+
     def get_direction_vector(self, normalized=False) -> tuple:
         """Returns the direction vector of the edge"""
+        if normalized:
+            return self._direction_vector_norm
+        return self._direction_vector
 
-        return compute_direction_vector(self.source, self.target, normalized)
+        # return compute_direction_vector(self.source, self.target, normalized)
  
     def add_subdivisions(self):
         """Subdivides the edge into more parts"""
@@ -64,8 +69,10 @@ class Edge():
 
             self.subdivision_points.append(subdivision_point)
 
+            """
             subdivision_point.x += np.random.uniform(100)
             subdivision_point.y += np.random.uniform(10)
+            """
 
             current_point.next_neighbour = subdivision_point
             if subdivision_point.next_neighbour != self.target:
