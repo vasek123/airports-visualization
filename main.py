@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
 
     RADIUS = 4
 
-    def __init__(self, airlines_file_path, map_shape_file_path):
+    def __init__(self, airlines_file_path, map_shape_file_path, compatibility_measure_file_path):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createGraphicView()
@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
         for edge in self.edges:
             edge.add_subdivisions()
 
-        self.fdeb = FDEB(self.nodes, self.edges)
+        self.fdeb = FDEB(self.nodes, self.edges, compatibility_measure_file_path)
 
         """
         x = -2
@@ -192,7 +192,7 @@ class MainWindow(QMainWindow):
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
 
-        NUM = 100
+        NUM = 60
         self.nodes = [None] * len(graph.nodes())
         self.nodes = [None] * min(NUM, len(graph.nodes()))
         for node_id, node in graph.nodes(data=True):
@@ -202,15 +202,16 @@ class MainWindow(QMainWindow):
             self.nodes[int(node_id)] = node
 
         added = []
-        for source, target in graph.edges():
+        for source, target, attr in graph.edges(data=True):
             if int(source) < NUM and int(target) < NUM:
-                if (int(target), int(source)) in added or (int(source), int(target)) in added:
-                    print("Edge ({}, {}) is duplicate".format(source, target))
-                    continue
+                # if (int(target), int(source)) in added or (int(source), int(target)) in added:
+                    # print("Edge ({}, {}) is duplicate".format(source, target))
+                    # continue
+                    # pass
 
-                self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
+                self.edges.append(Edge(id=int(attr["id"]), source=self.nodes[int(source)], target=self.nodes[int(target)]))
                 added.append((min(int(source), int(target)), max(int(source), int(target))))
-                print(added[-1])
+                # print(added[-1])
 
         print("Total number of edges:", len(added))
 
@@ -307,10 +308,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines-projected.graphml")
     parser.add_argument("--map", "-m", type=str, required=False, default="data/us-states.json")
+    parser.add_argument("--compatibility", "-c", type=str, required=False, default="data/compatibility-measures.npy")
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
-    ex = MainWindow(args.graph, args.map)
+    ex = MainWindow(args.graph, args.map, args.compatibility)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

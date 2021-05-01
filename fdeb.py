@@ -6,11 +6,18 @@ from typing import List
 # Possibly compute the compatibilities when needed, not before hand
 
 class FDEB():
-    def __init__(self, nodes: List[Node], edges: List[Edge]):
+    def __init__(self, nodes: List[Node], edges: List[Edge], compatibility_measures_input_file_path=None):
         self.nodes = nodes
         self.edges = edges
         self.compatibility_threshold = 0.05
-        self.compatibility = self.compute_compatibilities()
+
+        if compatibility_measures_input_file_path is not None:
+            self.compatibility = np.load(compatibility_measures_input_file_path)
+        else:
+            self.compatibility = self.compute_compatibilities()
+            # np.save("./data/compatibility_measures.npy", self.compatibility)
+
+        self.compatibility = np.where(np.isnan(self.compatibility), 0, self.compatibility)
 
         self.step_size = 4
         self.K = 0.1 
@@ -22,17 +29,28 @@ class FDEB():
         
         electro_duration = 0
         spring_duration = 0
+        subdivision_duration = 0
         for idx_a, edge_a in enumerate(self.edges):
+
+            subdivision_start = time.time()
             edge_a_subdivisions = edge_a.get_subdivisions()
+            subdivision_end = time.time()
+
+            subdivision_duration += subdivision_end - subdivision_start
 
             electro_start = time.time()
 
             for idx_b, edge_b in enumerate(self.edges):
-                if idx_a <= idx_b or self.compatibility[idx_a, idx_b] < self.compatibility_threshold:
+                if idx_a <= idx_b or self.compatibility[edge_a.id, edge_b.id] < self.compatibility_threshold:
                     continue
 
                 # Convert this inner part into numpy
+                subdivision_start = time.time()
                 edge_b_subdivisions = edge_b.get_subdivisions()
+                subdivision_end = time.time()
+
+                subdivision_duration += subdivision_end - subdivision_start
+
                 # print("B:", edge_b_subdivisions)
                 directions = edge_b_subdivisions - edge_a_subdivisions
                 distances = np.linalg.norm(directions, axis=1)
@@ -43,7 +61,8 @@ class FDEB():
                 unit_directions = directions / distances[:, None] # Broadcasting
                 distance_mask = (distances >= 1).astype(int)
 
-                compatibility = self.compatibility[idx_a, idx_b] if not np.isnan(self.compatibility[idx_a, idx_b]) else 0
+
+                compatibility = self.compatibility[edge_a.id, edge_b.id]
                 forces_applied = unit_directions * distance_mask[:, None] * compatibility / distances[:, None]
 
                 forces[idx_a, :, :] += forces_applied
@@ -83,21 +102,22 @@ class FDEB():
 
             spring_duration += spring_end - spring_start
 
-        print("Computing electrostatic forces took {}s".format(electro_duration))
-        print("Computing spring forces took {}s".format(spring_duration))
+        # print("Computing electrostatic forces took {}s".format(electro_duration))
+        # print("Computing spring forces took {}s".format(spring_duration))
+        # print("Generating subdivision points matrices took {}s".format(subdivision_duration))
 
         return forces
 
     def compute_compatibilities(self):
-        compatibility = np.ones((len(self.edges), len(self.edges)))
+        compatibility = np.ones((2101, 2101))
 
         for idx_a, edge_a in enumerate(self.edges):
             for idx_b, edge_b in enumerate(self.edges):
                 if idx_a <= idx_b:
                     continue
 
-                compatibility[idx_a, idx_b] = self.edge_compatibility_measure(edge_a, edge_b)
-                compatibility[idx_b, idx_a] = compatibility[idx_a, idx_b]
+                compatibility[edge_a.id, edge_b.id] = self.edge_compatibility_measure(edge_a, edge_b)
+                compatibility[edge_b.id, edge_a.id] = compatibility[edge_a.id, edge_b.id]
 
         counter = 0
         print(self.compatibility_threshold)
