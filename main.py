@@ -161,9 +161,13 @@ class MainWindow(QMainWindow):
         if not self.edges:
             return
 
+        start = time.time()
         for idx, edge in enumerate(self.edges):
             path = self.generateEdgePath(edge)
             self.pathItems[idx].setPath(path)
+        end = time.time()
+
+        print("Updating edges took {}s".format(end - start))
 
     def createEdgesPath(self):
         if not self.edges:
