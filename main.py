@@ -23,7 +23,7 @@ import csv
 from graph import Node, Edge
 from PySide6.QtCore import QPointF, Qt, QSize
 from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
-from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter, QKeyEvent
+from PySide6.QtGui import QBrush, QColor, QKeySequence, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
@@ -113,14 +113,40 @@ class MainWindow(QMainWindow):
 
         for edge in self.edges:
             edge.add_subdivisions()
-            edge.add_subdivisions()
-            edge.add_subdivisions()
 
         self.fdeb = FDEB(self.nodes, self.edges)
+
+        """
+        x = -2
+        y = 4
+        for a, b in [(x, y)]:
+            i_0, i_1 = self.fdeb.get_intersection_points(self.edges[a], self.edges[b])
+            self.scene.addEllipse(i_0[0], i_0[1], 10, 10, brush=QBrush(Qt.red))
+            self.scene.addEllipse(i_1[0], i_1[1], 10, 10, brush=QBrush(Qt.red))
+            self.scene.addEllipse((i_0[0] + i_1[0]) / 2, (i_0[1] + i_1[1]) / 2, 10, 10, brush=QBrush(Qt.red))
+            self.scene.addLine(self.edges[a].source.x, self.edges[a].source.y, i_0[0], i_0[1])
+            self.scene.addLine(self.edges[a].target.x, self.edges[a].target.y, i_1[0], i_1[1])
+            self.pathItems[a].setPen(QPen(Qt.red))
+            self.pathItems[b].setPen(QPen(Qt.red))
+
+        # print("Visibility compatibility:", self.fdeb.visibility_compatibility(self.edges[x], self.edges[y]))
+        """
             
         self.show()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key_X:
+            self.fdeb.step_size /= 2
+            for edge in self.edges:
+                edge.add_subdivisions()
+
+            self.fdeb.k = self.fdeb.K / len(self.edges[0].subdivision_points)
+
+            print("Added subdivisions, new count:", len(self.edges[0].subdivision_points))
+            print("Step size:", self.fdeb.step_size, ", k=", self.fdeb.k)
+
+            return super().keyPressEvent(event)
+
         self.fdeb.iteration_step(self.step)
         self.step += 1
         # print("FDEB iteration complete")
@@ -144,7 +170,7 @@ class MainWindow(QMainWindow):
             return
         
         color = QColor(Qt.blue)
-        color.setAlphaF(0.75)
+        color.setAlphaF(0.4)
         pen = QPen(color)
 
         for edge in self.edges:
@@ -176,11 +202,14 @@ class MainWindow(QMainWindow):
         for source, target in graph.edges():
             if int(source) < NUM and int(target) < NUM:
                 if (int(target), int(source)) in added or (int(source), int(target)) in added:
-                    print("ay")
-                    continue
+                    print("Edge ({}, {}) is duplicate".format(source, target))
+                    # continue
+
                 self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
-                added.append((int(source), int(target)))
-                print((int(source), int(target)))
+                added.append((min(int(source), int(target)), max(int(source), int(target))))
+                print(added[-1])
+
+        print("Total number of edges:", len(added))
 
     def loadTopology(self, input_file_path):
         with open(input_file_path, "r") as f:
