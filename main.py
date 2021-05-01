@@ -189,7 +189,7 @@ class MainWindow(QMainWindow):
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
 
-        NUM = 250
+        NUM = 100
         self.nodes = [None] * len(graph.nodes())
         self.nodes = [None] * min(NUM, len(graph.nodes()))
         for node_id, node in graph.nodes(data=True):
@@ -202,12 +202,14 @@ class MainWindow(QMainWindow):
         for source, target in graph.edges():
             if int(source) < NUM and int(target) < NUM:
                 if (int(target), int(source)) in added or (int(source), int(target)) in added:
-                    # print("ay")
-                    continue
+                    print("Edge ({}, {}) is duplicate".format(source, target))
+                    # continue
 
                 self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
-                added.append((int(source), int(target)))
-                print((int(source), int(target)))
+                added.append((min(int(source), int(target)), max(int(source), int(target))))
+                print(added[-1])
+
+        print("Total number of edges:", len(added))
 
     def loadTopology(self, input_file_path):
         with open(input_file_path, "r") as f:

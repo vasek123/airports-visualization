@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from graph import Node, Edge
 from typing import List
@@ -148,5 +149,14 @@ class FDEB():
                 edge.add_subdivisions()
         """
 
+        start = time.time()
         forces = self.calculate_forces()
+        end = time.time()
+
+        print("Computing forces took {} s".format(end - start))
+
+        start = time.time()
         self.apply_forces(forces)
+        end = time.time()
+
+        print("Applying forces took {} s".format(end - start))
