@@ -20,22 +20,55 @@ class FDEB():
         subdivision_points_count = len(self.edges[0].subdivision_points)
         forces = np.zeros((len(self.edges), subdivision_points_count, 2))
         
+        electro_duration = 0
+        spring_duration = 0
         for idx_a, edge_a in enumerate(self.edges):
+            edge_a_subdivisions = edge_a.get_subdivisions()
+
+            electro_start = time.time()
+
             for idx_b, edge_b in enumerate(self.edges):
                 if idx_a <= idx_b or self.compatibility[idx_a, idx_b] < self.compatibility_threshold:
                     continue
 
+                # Convert this inner part into numpy
+                edge_b_subdivisions = edge_b.get_subdivisions()
+                # print("B:", edge_b_subdivisions)
+                directions = edge_b_subdivisions - edge_a_subdivisions
+                distances = np.linalg.norm(directions, axis=1)
+
+                # Make sure that division by 0 cannot occur
+                # The direction is already [0, 0] if the distance is 0
+                distances = np.where(distances == 0, 1, distances)
+                unit_directions = directions / distances[:, None] # Broadcasting
+                distance_mask = (distances >= 1).astype(int)
+
+                compatibility = self.compatibility[idx_a, idx_b] if not np.isnan(self.compatibility[idx_a, idx_b]) else 0
+                forces_applied = unit_directions * distance_mask[:, None] * compatibility / distances[:, None]
+
+                forces[idx_a, :, :] += forces_applied
+                forces[idx_b, :, :] -= forces_applied
+
+                """
                 for i in range(subdivision_points_count):
                     direction = np.array(edge_a.subdivision_points[i].get_direction_to(edge_b.subdivision_points[i]))
+                    # print("direction:", direction, unit_directions[i])
                     # There will be a problem with forces that are too large for item too close together
                     distance = edge_a.subdivision_points[i].distance_from(edge_b.subdivision_points[i])
+                    # print(distance == distances[i], distance, distances[i], np.all(direction == unit_directions[i]), direction, unit_directions[i])
                     if distance >= 1:
                         f = self.compatibility[idx_a, idx_b] / distance
-
                         direction *= f
                         forces[idx_a, i, :] += direction
                         forces[idx_b, i, :] -= direction
+                """
+                # print(np.sum(np.sum(np.abs(forces - new_forces))))
 
+            electro_end = time.time()
+
+            electro_duration += electro_end - electro_start
+
+            spring_start = time.time()
             for i in range(subdivision_points_count):
                 # Compute the interaction between the neighbouring subdivision points
                 sub_point = edge_a.subdivision_points[i]
@@ -45,6 +78,13 @@ class FDEB():
                     if neighbour_dist > 0:
                         # forces[idx_a, i, :] += self.k * neighbour_dir * neighbour_dist
                         pass
+            
+            spring_end = time.time()
+
+            spring_duration += spring_end - spring_start
+
+        print("Computing electrostatic forces took {}s".format(electro_duration))
+        print("Computing spring forces took {}s".format(spring_duration))
 
         return forces
 

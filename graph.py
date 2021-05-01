@@ -7,11 +7,31 @@ def compute_direction_vector(source, target, normalized=False):
 
     return vec
 
-class Node():
+class Position():
+    def __init__(self, x: float, y: float):
+        self.position = np.array([x, y])
+
+    @property
+    def x(self):
+        return self.position[0]
+
+    @x.setter
+    def x(self, new_x):
+        self.position[0] = new_x
+
+    @property
+    def y(self):
+        return self.position[1]
+
+    @y.setter
+    def y(self, new_y):
+        self.position[1] = new_y
+
+
+class Node(Position):
     def __init__(self, id: int, x: float, y: float):
+        super().__init__(x, y)
         self.id = id
-        self.x = x
-        self.y = y
 
 
 class Edge():
@@ -80,10 +100,12 @@ class Edge():
 
             current_point = subdivision_point.next_neighbour
 
-class SubdivisionPoint():
+    def get_subdivisions(self):
+        return np.array([point.position for point in self.subdivision_points])
+
+class SubdivisionPoint(Position):
     def __init__(self, x: int, y: int, previous_neighbour, next_neighbour):
-        self.x = x
-        self.y = y
+        super().__init__(x, y)
         self.previous_neighbour = previous_neighbour
         self.next_neighbour = next_neighbour
 

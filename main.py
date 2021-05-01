@@ -16,7 +16,6 @@ import argparse
 import networkx as nx
 import numpy as np
 import shapefile
-import topojson as tp
 import geojson
 import json
 import csv
@@ -207,7 +206,7 @@ class MainWindow(QMainWindow):
             if int(source) < NUM and int(target) < NUM:
                 if (int(target), int(source)) in added or (int(source), int(target)) in added:
                     print("Edge ({}, {}) is duplicate".format(source, target))
-                    # continue
+                    continue
 
                 self.edges.append(Edge(id=len(self.edges), source=self.nodes[int(source)], target=self.nodes[int(target)]))
                 added.append((min(int(source), int(target)), max(int(source), int(target))))
