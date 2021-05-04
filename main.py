@@ -189,8 +189,22 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.view)
         self.view.setGeometry(0, 0, 800, 600)
 
+    def calculateDegree(self, graph):
+        degrees = [0] * len(graph.nodes())
+        processed_edges = []
+        for edge in graph.edges():
+            if (edge[0], edge[1]) not in processed_edges and (edge[1], edge[0]) not in processed_edges:
+                degrees[int(edge[0])] += 1
+                degrees[int(edge[1])] += 1
+                processed_edges.append((edge[0], edge[1]))
+        return degrees
+
+
+
+
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
+        degrees = self.calculateDegree(graph)
 
         NUM = 300 
         self.nodes = [None] * len(graph.nodes())
@@ -198,20 +212,26 @@ class MainWindow(QMainWindow):
         min_x = float("inf")
         min_y = float("inf")
         max_x = -float("inf")
-        max_y = -float("inf") 
+        max_y = -float("inf")
+        max_size = -float("inf")
+        min_size = float("inf")
         for node_id, node in graph.nodes(data=True):
             if int(node_id) >= NUM:
                 continue
-            node = Node(id=int(node_id), x=float(node["x"]) - self.RADIUS/2, y=float(node["y"]) - self.RADIUS/2)
+            node = Node(id=int(node_id), size=degrees[int(node_id)], x=float(node["x"]) - self.RADIUS/2, y=float(node["y"]) - self.RADIUS/2)
             min_x = min(min_x, node.x)
             min_y = min(min_y, node.y)
             max_x = max(max_x, node.x)
             max_y = max(max_y, node.y)
 
+            max_size = max(max_size, graph.degree[node_id])
+            min_size = min(min_size, graph.degree[node_id])
+
             self.nodes[int(node_id)] = node
 
         print(min_x, min_y)
         print(max_x, max_y)
+        print(min_size, max_size)
 
         added = []
         for source, target, attr in graph.edges(data=True):

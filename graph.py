@@ -29,9 +29,10 @@ class Position():
 
 
 class Node(Position):
-    def __init__(self, id: int, x: float, y: float):
+    def __init__(self, id: int, size: int, x: float, y: float):
         super().__init__(x, y)
         self.id = id
+        self.size = size
 
 
 class Edge():
