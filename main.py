@@ -192,21 +192,33 @@ class MainWindow(QMainWindow):
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
 
-        NUM = 60
+        NUM = 300 
         self.nodes = [None] * len(graph.nodes())
         self.nodes = [None] * min(NUM, len(graph.nodes()))
+        min_x = float("inf")
+        min_y = float("inf")
+        max_x = -float("inf")
+        max_y = -float("inf") 
         for node_id, node in graph.nodes(data=True):
             if int(node_id) >= NUM:
                 continue
             node = Node(id=int(node_id), x=float(node["x"]) - self.RADIUS/2, y=float(node["y"]) - self.RADIUS/2)
+            min_x = min(min_x, node.x)
+            min_y = min(min_y, node.y)
+            max_x = max(max_x, node.x)
+            max_y = max(max_y, node.y)
+
             self.nodes[int(node_id)] = node
+
+        print(min_x, min_y)
+        print(max_x, max_y)
 
         added = []
         for source, target, attr in graph.edges(data=True):
             if int(source) < NUM and int(target) < NUM:
-                # if (int(target), int(source)) in added or (int(source), int(target)) in added:
+                if (int(target), int(source)) in added or (int(source), int(target)) in added:
                     # print("Edge ({}, {}) is duplicate".format(source, target))
-                    # continue
+                    continue
                     # pass
 
                 self.edges.append(Edge(id=int(attr["id"]), source=self.nodes[int(source)], target=self.nodes[int(target)]))

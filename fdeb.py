@@ -20,7 +20,7 @@ class FDEB():
         self.compatibility = np.where(np.isnan(self.compatibility), 0, self.compatibility)
 
         self.step_size = 4
-        self.K = 0.1 
+        self.K = 0.1
         self.k = self.K
 
     def calculate_forces(self):
@@ -63,7 +63,7 @@ class FDEB():
 
 
                 compatibility = self.compatibility[edge_a.id, edge_b.id]
-                forces_applied = unit_directions * distance_mask[:, None] * compatibility / distances[:, None]
+                forces_applied = unit_directions * distance_mask[:, None] * compatibility / np.power(distances[:, None], 2)
 
                 forces[idx_a, :, :] += forces_applied
                 forces[idx_b, :, :] -= forces_applied
