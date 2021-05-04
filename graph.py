@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Set
 
 def compute_direction_vector(source, target, normalized=False):
     vec = np.array([target.x - source.x, target.y - source.y])
@@ -33,6 +34,7 @@ class Node(Position):
         super().__init__(x, y)
         self.id = id
         self.size = size
+        self.connected_edges: Set[Edge] = set()
 
 
 class Edge():

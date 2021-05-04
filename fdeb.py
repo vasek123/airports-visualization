@@ -3,8 +3,6 @@ import numpy as np
 from graph import Node, Edge
 from typing import List
 
-# Possibly compute the compatibilities when needed, not before hand
-
 class FDEB():
     def __init__(self, nodes: List[Node], edges: List[Edge], compatibility_measures_input_file_path=None):
         self.nodes = nodes
@@ -19,8 +17,8 @@ class FDEB():
 
         self.compatibility = np.where(np.isnan(self.compatibility), 0, self.compatibility)
 
-        self.step_size = 4
-        self.K = 0.1
+        self.step_size = 8 
+        self.K = 0
         self.k = self.K
 
     def calculate_forces(self):

@@ -19,7 +19,9 @@ import shapefile
 import geojson
 import json
 import csv
+from typing import List
 from graph import Node, Edge
+from constants import ObjectType, Property
 from PySide6.QtCore import QPointF, Qt, QSize
 from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
 from PySide6.QtGui import QBrush, QColor, QKeySequence, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter, QKeyEvent
@@ -30,6 +32,7 @@ class VisGraphicsScene(QGraphicsScene):
     def __init__(self):
         super(VisGraphicsScene, self).__init__()
         self.selection = None
+        self.selectedNode = None
         self.wasDragg = False
         colorGreen = QColor(Qt.green)
         # colorGreen.setAlphaF(0.5)
@@ -40,19 +43,48 @@ class VisGraphicsScene(QGraphicsScene):
         self.selected = QPen(colorRed)
         self.selectedOrigColor = None
 
+        self.edgeColor = QColor(Qt.blue)
+        self.edgeColor.setAlphaF(0.4)
+
+        self.nodePen = QPen(QColor(Qt.green))
+
+        self.paths = {}
+
+    def addEdge(self, edge_id, path_item):
+        self.paths[edge_id] = path_item
+
+    def colorConnectedEdges(self, node, color):
+        for edge_id in node.data(Property.ConnectedEdges):
+            self.paths[edge_id].setPen(color)
+
     def mouseReleaseEvent(self, event): 
         if self.wasDragg:
             return
+
         # If something has been previously selected, set its outline back to black
         if self.selection:
             self.selection.setPen(self.pen if self.selectedOrigColor is None else self.selectedOrigColor)
+
+        if self.selectedNode:
+            self.selectedNode.setPen(self.nodePen)
+            self.colorConnectedEdges(self.selectedNode, self.edgeColor)
+
         # Try to get the new item
         item = self.itemAt(event.scenePos(), QTransform())
         if item:
+
+            if item.data(Property.ObjectType) is ObjectType.Node:
+                # print("Selected node", item.data(Property.NodeId))
+                item.setPen(self.selected)
+                self.colorConnectedEdges(item, self.selected)
+                self.selectedNode = item
+            else:
+                return
+
             # Sets its outline to the "selected" color and store it in self.selection
-            self.selectedOrigColor = item.pen()
-            item.setPen(self.selected)
-            self.selection = item
+            # self.selectedOrigColor = item.pen()
+            # item.setPen(self.selected)
+            # self.selection = item
 
 class VisGraphicsView(QGraphicsView):
     def __init__(self, scene, parent):
@@ -93,13 +125,14 @@ class MainWindow(QMainWindow):
 
     RADIUS = 4
 
-    def __init__(self, airlines_file_path, map_shape_file_path, compatibility_measure_file_path):
+    def __init__(self, airlines_file_path, map_shape_file_path, compatibility_measure_file_path, max_number):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createGraphicView()
 
-        self.nodes = []
-        self.edges = []
+        self.max_number = max_number
+        self.nodes: List[Node] = []
+        self.edges: List[Edge] = []
         self.step = 1
 
         self.pathItems = []
@@ -148,9 +181,7 @@ class MainWindow(QMainWindow):
 
         self.fdeb.iteration_step(self.step)
         self.step += 1
-        # print("FDEB iteration complete")
         self.updateEdgePaths()
-        # print("Path update complete")
         print("step:", self.step)
         print("PathItems count:", len(self.pathItems))
         print("Edges count:", len(self.edges))
@@ -180,7 +211,10 @@ class MainWindow(QMainWindow):
             path = self.generateEdgePath(edge)
             pathItem = self.scene.addPath(path)
             pathItem.setPen(pen)
+            pathItem.setData(Property.EdgeId, edge.id)
+            pathItem.setData(Property.ObjectType, ObjectType.Edge)
             self.pathItems.append(pathItem)
+            self.scene.addEdge(edge.id, pathItem)
 
     def createGraphicView(self):
         self.scene = VisGraphicsScene()
@@ -199,14 +233,11 @@ class MainWindow(QMainWindow):
                 processed_edges.append((edge[0], edge[1]))
         return degrees
 
-
-
-
     def loadGraph(self, input_file_path):
         graph = nx.read_graphml(input_file_path)
         degrees = self.calculateDegree(graph)
 
-        NUM = 300 
+        NUM = self.max_number 
         self.nodes = [None] * len(graph.nodes())
         self.nodes = [None] * min(NUM, len(graph.nodes()))
         min_x = float("inf")
@@ -235,15 +266,19 @@ class MainWindow(QMainWindow):
 
         added = []
         for source, target, attr in graph.edges(data=True):
+            # Use only edges that are connected the some of the first NUM aiports
             if int(source) < NUM and int(target) < NUM:
+                # Ignore the edge if it's reverse has already been added
                 if (int(target), int(source)) in added or (int(source), int(target)) in added:
-                    # print("Edge ({}, {}) is duplicate".format(source, target))
                     continue
-                    # pass
 
-                self.edges.append(Edge(id=int(attr["id"]), source=self.nodes[int(source)], target=self.nodes[int(target)]))
+                edge = Edge(id=int(attr["id"]), source=self.nodes[int(source)], target=self.nodes[int(target)])
+                self.edges.append(edge)
                 added.append((min(int(source), int(target)), max(int(source), int(target))))
-                # print(added[-1])
+
+                # Add the edge id to the node
+                self.nodes[edge.source.id].connected_edges.add(edge.id)
+                self.nodes[edge.target.id].connected_edges.add(edge.id)
 
         print("Total number of edges:", len(added))
 
@@ -271,17 +306,22 @@ class MainWindow(QMainWindow):
             if feature["geometry"]["type"] == "Polygon":
                 geometry = feature["geometry"]["coordinates"][0]
                 polygon = generatePolygon(geometry)
-                self.scene.addPolygon(polygon, pen=self.scene.pen)
+                item = self.scene.addPolygon(polygon, pen=self.scene.pen)
             elif feature["geometry"]["type"] == "MultiPolygon":
                 for geometry in feature["geometry"]["coordinates"]:
                     polygon = generatePolygon(geometry[0])
-                    self.scene.addPolygon(polygon, pen=self.scene.pen)
+                    item = self.scene.addPolygon(polygon, pen=self.scene.pen)
+
+            item.setData(Property.ObjectType, ObjectType.State)
         
 
     def generateGraph(self):
         self.createEdgesPath()
         for node in self.nodes:
-            self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
+            nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
+            nodeItem.setData(Property.ObjectType, ObjectType.Node)
+            nodeItem.setData(Property.NodeId, node.id)
+            nodeItem.setData(Property.ConnectedEdges, node.connected_edges)
 
     """
     def randomPathChange(self, times=1, change=1):
@@ -341,10 +381,11 @@ def main():
     parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines-projected.graphml")
     parser.add_argument("--map", "-m", type=str, required=False, default="data/us-states.json")
     parser.add_argument("--compatibility", "-c", type=str, required=False, default="data/compatibility-measures.npy")
+    parser.add_argument("--number", "-n", type=int, required=False, default=300)
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
-    ex = MainWindow(args.graph, args.map, args.compatibility)
+    ex = MainWindow(args.graph, args.map, args.compatibility, args.number)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
