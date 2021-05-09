@@ -7,6 +7,5 @@ class ObjectType(IntEnum):
 
 class Property(IntEnum):
     ObjectType = 0
-    NodeId = 1
-    EdgeId = 2
-    ConnectedEdges = 3
+    Node = 1
+    Edge = 2

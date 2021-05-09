@@ -54,7 +54,7 @@ class VisGraphicsScene(QGraphicsScene):
         self.paths[edge_id] = path_item
 
     def colorConnectedEdges(self, node, color):
-        for edge_id in node.data(Property.ConnectedEdges):
+        for edge_id in node.data(Property.Node).connected_edges:
             self.paths[edge_id].setPen(color)
 
     def mouseReleaseEvent(self, event): 
@@ -211,8 +211,10 @@ class MainWindow(QMainWindow):
             path = self.generateEdgePath(edge)
             pathItem = self.scene.addPath(path)
             pathItem.setPen(pen)
-            pathItem.setData(Property.EdgeId, edge.id)
+
             pathItem.setData(Property.ObjectType, ObjectType.Edge)
+            pathItem.setData(Property.Edge, edge)
+
             self.pathItems.append(pathItem)
             self.scene.addEdge(edge.id, pathItem)
 
@@ -320,8 +322,7 @@ class MainWindow(QMainWindow):
         for node in self.nodes:
             nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
             nodeItem.setData(Property.ObjectType, ObjectType.Node)
-            nodeItem.setData(Property.NodeId, node.id)
-            nodeItem.setData(Property.ConnectedEdges, node.connected_edges)
+            nodeItem.setData(Property.Node, node)
 
     """
     def randomPathChange(self, times=1, change=1):
