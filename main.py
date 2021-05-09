@@ -21,30 +21,35 @@ from graph import Node, Edge
 from fdeb import FDEB
 from constants import ObjectType, Property, NODES_Z_VALUE
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QToolBar, QLabel
+from PySide6.QtWidgets import QApplication, QBoxLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
 from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
 class VisGraphicsScene(QGraphicsScene):
-    def __init__(self):
+    def __init__(self, selection_change_handler):
         super(VisGraphicsScene, self).__init__()
         self.selection = None
         self.selectedNode = None
         self.wasDragg = False
+        self.selection_change_handler = selection_change_handler
         colorGreen = QColor(Qt.green)
         # colorGreen.setAlphaF(0.5)
         colorRed = QColor(Qt.red)
         colorRed.setAlphaF(0.7)
         # self.pen = QPen(Qt.black)
         self.pen = QPen(colorGreen)
+        self.pen.setWidthF(0.25)
+
         self.selected = QPen(colorRed)
+        self.selected.setWidthF(1)
         self.selectedOrigColor = None
 
         self.edgeColor = QColor(Qt.blue)
         self.edgeColor.setAlphaF(0.3)
 
         self.nodePen = QPen(QColor(Qt.green))
+        self.nodePen.setWidthF(0.25)
 
         self.paths = {}
         self.selected_airport_name_item: QGraphicsTextItem = QGraphicsTextItem("abc")
@@ -70,6 +75,7 @@ class VisGraphicsScene(QGraphicsScene):
         if self.selectedNode:
             self.selectedNode.setPen(self.nodePen)
             self.colorConnectedEdges(self.selectedNode, self.edgeColor, 0)
+            self.selection_change_handler(None)
 
         # Try to get the new item
         item = self.itemAt(event.scenePos(), QTransform())
@@ -81,6 +87,7 @@ class VisGraphicsScene(QGraphicsScene):
                 self.colorConnectedEdges(item, self.selected, 1)
                 self.selectedNode = item
                 self.selected_airport_name_item.setPlainText(item.data(Property.Node).code)
+                self.selection_change_handler(item.data(Property.Node))
             else:
                 return
 
@@ -131,8 +138,8 @@ class MainWindow(QMainWindow):
     def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path, compatibility_measure_file_path, max_number):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
-        self.createGraphicView()
         self.createToolbar()
+        self.createGraphicView()
 
         self.max_number = max_number
         self.nodes: List[Node] = []
@@ -152,35 +159,37 @@ class MainWindow(QMainWindow):
 
         self.fdeb = FDEB(self.nodes, self.edges, compatibility_measure_file_path)
 
-        """
-        x = -2
-        y = 4
-        for a, b in [(x, y)]:
-            i_0, i_1 = self.fdeb.get_intersection_points(self.edges[a], self.edges[b])
-            self.scene.addEllipse(i_0[0], i_0[1], 10, 10, brush=QBrush(Qt.red))
-            self.scene.addEllipse(i_1[0], i_1[1], 10, 10, brush=QBrush(Qt.red))
-            self.scene.addEllipse((i_0[0] + i_1[0]) / 2, (i_0[1] + i_1[1]) / 2, 10, 10, brush=QBrush(Qt.red))
-            self.scene.addLine(self.edges[a].source.x, self.edges[a].source.y, i_0[0], i_0[1])
-            self.scene.addLine(self.edges[a].target.x, self.edges[a].target.y, i_1[0], i_1[1])
-            self.pathItems[a].setPen(QPen(Qt.red))
-            self.pathItems[b].setPen(QPen(Qt.red))
-
-        # print("Visibility compatibility:", self.fdeb.visibility_compatibility(self.edges[x], self.edges[y]))
-        """
-            
         self.show()
 
     def createGraphicView(self):
-            self.scene = VisGraphicsScene()
-            self.brush = [QBrush(Qt.yellow), QBrush(Qt.green), QBrush(Qt.blue)]
-            self.view = VisGraphicsView(self.scene, self)
-            self.setCentralWidget(self.view)
-            self.view.setGeometry(0, 0, 800, 600)
+        self.scene = VisGraphicsScene(self.selectionChangedHandler)
+        self.brush = [QBrush(Qt.yellow), QBrush(Qt.green), QBrush(Qt.blue)]
+        self.view = VisGraphicsView(self.scene, self)
+        self.setCentralWidget(self.view)
+        self.view.setGeometry(0, 0, 800, 600)
+
+        # self.scene.selectionChanged.connect(self.selectionChangedHandler)
 
     def createToolbar(self):
         self.toolbar = QToolBar("Toolbar")
-        self.addToolBar(self.toolbar)
-        self.toolbar.addWidget(QLabel("abc"))
+        self.addToolBar(Qt.BottomToolBarArea, self.toolbar)
+        self.toolbar.setFixedHeight(40)
+        self.toolbar.setMovable(False)
+        
+        layout = QHBoxLayout()
+        layout.setSpacing(48)
+        self.toolbar.setLayout(layout)
+
+        self.selected_airport_label = QLabel("abc")
+        self.toolbar.addWidget(self.selected_airport_label)
+
+        self.slider = QSlider(orientation=Qt.Orientation.Horizontal)
+        self.slider.setMaximumSize(400, 30)
+        self.slider_label = QLabel("0")
+        self.slider.valueChanged.connect(self.sliderChangeHandler)
+        self.toolbar.addWidget(self.slider)
+        self.toolbar.addWidget(self.slider_label)
+
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_X:
@@ -202,6 +211,15 @@ class MainWindow(QMainWindow):
         print("PathItems count:", len(self.pathItems))
         print("Edges count:", len(self.edges))
         return super().keyPressEvent(event)
+
+    def selectionChangedHandler(self, node: Node):
+        if node is None:
+            self.selected_airport_label.setText("No airport is selected")
+        else:
+            self.selected_airport_label.setText("{}, size: {}".format(node.code, node.size))
+
+    def sliderChangeHandler(self, slider_value: float):
+        self.slider_label.setText("{:.2f}".format(slider_value))
 
     def updateEdgePaths(self):
         if not self.edges:
