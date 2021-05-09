@@ -1,5 +1,7 @@
 from enum import IntEnum
 
+NODES_Z_VALUE = 3.0
+
 class ObjectType(IntEnum):
     Node = 0
     Edge = 1

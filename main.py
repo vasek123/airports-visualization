@@ -9,23 +9,20 @@
 # OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING 
 # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from fdeb import FDEB
 import sys, random, math
 import time
 import argparse
 import networkx as nx
 import numpy as np
 import pandas as pd
-import shapefile
 import geojson
-import json
-import csv
 from typing import List
 from graph import Node, Edge
-from constants import ObjectType, Property
-from PySide6.QtCore import QPointF, Qt, QSize
-from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy, QGraphicsTextItem
-from PySide6.QtGui import QBrush, QColor, QKeySequence, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter, QKeyEvent
+from fdeb import FDEB
+from constants import ObjectType, Property, NODES_Z_VALUE
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QToolBar, QLabel
+from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
@@ -38,7 +35,7 @@ class VisGraphicsScene(QGraphicsScene):
         colorGreen = QColor(Qt.green)
         # colorGreen.setAlphaF(0.5)
         colorRed = QColor(Qt.red)
-        colorRed.setAlphaF(0.5)
+        colorRed.setAlphaF(0.7)
         # self.pen = QPen(Qt.black)
         self.pen = QPen(colorGreen)
         self.selected = QPen(colorRed)
@@ -52,14 +49,15 @@ class VisGraphicsScene(QGraphicsScene):
         self.paths = {}
         self.selected_airport_name_item: QGraphicsTextItem = QGraphicsTextItem("abc")
         self.selected_airport_name_item.setPos(20, 20)
-        self.addItem(self.selected_airport_name_item)
+        # self.addItem(self.selected_airport_name_item)
 
     def addEdge(self, edge_id, path_item):
         self.paths[edge_id] = path_item
 
-    def colorConnectedEdges(self, node, color):
+    def colorConnectedEdges(self, node, color, z):
         for edge_id in node.data(Property.Node).connected_edges:
             self.paths[edge_id].setPen(color)
+            self.paths[edge_id].setZValue(z)
 
     def mouseReleaseEvent(self, event): 
         if self.wasDragg:
@@ -71,7 +69,7 @@ class VisGraphicsScene(QGraphicsScene):
 
         if self.selectedNode:
             self.selectedNode.setPen(self.nodePen)
-            self.colorConnectedEdges(self.selectedNode, self.edgeColor)
+            self.colorConnectedEdges(self.selectedNode, self.edgeColor, 0)
 
         # Try to get the new item
         item = self.itemAt(event.scenePos(), QTransform())
@@ -80,9 +78,8 @@ class VisGraphicsScene(QGraphicsScene):
             if item.data(Property.ObjectType) is ObjectType.Node:
                 # print("Selected node", item.data(Property.NodeId))
                 item.setPen(self.selected)
-                self.colorConnectedEdges(item, self.selected)
+                self.colorConnectedEdges(item, self.selected, 1)
                 self.selectedNode = item
-                print(item.data(Property.Node).name)
                 self.selected_airport_name_item.setPlainText(item.data(Property.Node).code)
             else:
                 return
@@ -93,7 +90,7 @@ class VisGraphicsScene(QGraphicsScene):
             # self.selection = item
 
 class VisGraphicsView(QGraphicsView):
-    def __init__(self, scene, parent):
+    def __init__(self, scene: VisGraphicsScene, parent):
         super(VisGraphicsView, self).__init__(scene, parent)
         self.startX = 0.0
         self.startY = 0.0
@@ -129,12 +126,13 @@ class VisGraphicsView(QGraphicsView):
 
 class MainWindow(QMainWindow):
 
-    RADIUS = 4
+    RADIUS = 6 
 
     def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path, compatibility_measure_file_path, max_number):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createGraphicView()
+        self.createToolbar()
 
         self.max_number = max_number
         self.nodes: List[Node] = []
@@ -171,6 +169,18 @@ class MainWindow(QMainWindow):
         """
             
         self.show()
+
+    def createGraphicView(self):
+            self.scene = VisGraphicsScene()
+            self.brush = [QBrush(Qt.yellow), QBrush(Qt.green), QBrush(Qt.blue)]
+            self.view = VisGraphicsView(self.scene, self)
+            self.setCentralWidget(self.view)
+            self.view.setGeometry(0, 0, 800, 600)
+
+    def createToolbar(self):
+        self.toolbar = QToolBar("Toolbar")
+        self.addToolBar(self.toolbar)
+        self.toolbar.addWidget(QLabel("abc"))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_X:
@@ -224,13 +234,20 @@ class MainWindow(QMainWindow):
             self.pathItems.append(pathItem)
             self.scene.addEdge(edge.id, pathItem)
 
-    def createGraphicView(self):
-        self.scene = VisGraphicsScene()
-        self.brush = [QBrush(Qt.yellow), QBrush(Qt.green), QBrush(Qt.blue)]
-        self.view = VisGraphicsView(self.scene, self)
-        self.setCentralWidget(self.view)
-        self.view.setGeometry(0, 0, 800, 600)
+    def generateNodeColor(self):
+        maxSize = max(node.size for node in self.nodes)
+        minSize = min(node.size for node in self.nodes)
+        assignedColors = {}
+        for node in self.nodes:
+            x = 1/(maxSize - minSize)
+            l = 0.4 + 0.6 * x * (node.size-minSize)
+            h = ((node.size - minSize)/(maxSize-minSize))/6
+            color = QColor()
+            color.setHslF(h,0.75, l, 1)
+            assignedColors[node] = color
 
+        return assignedColors
+    
     def calculateDegree(self, graph):
         degrees = [0] * len(graph.nodes())
         processed_edges = []
@@ -244,7 +261,6 @@ class MainWindow(QMainWindow):
     def loadGraph(self, input_file_path, airports_file_path):
         graph = nx.read_graphml(input_file_path)
         airports = pd.read_csv(airports_file_path)
-        print(airports[airports["IATA_CODE"] == "LIT"]["AIRPORT"])
         degrees = self.calculateDegree(graph)
 
         NUM = self.max_number 
@@ -339,11 +355,12 @@ class MainWindow(QMainWindow):
 
     def generateGraph(self):
         self.createEdgesPath()
+        assignedColors = self.generateNodeColor()
         for node in self.nodes:
-            nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
+            nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, assignedColors[node])
             nodeItem.setData(Property.ObjectType, ObjectType.Node)
             nodeItem.setData(Property.Node, node)
-            nodeItem.setToolTip(node.code)
+            nodeItem.setZValue(NODES_Z_VALUE)
 
     """
     def randomPathChange(self, times=1, change=1):
