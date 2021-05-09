@@ -15,6 +15,7 @@ import time
 import argparse
 import networkx as nx
 import numpy as np
+import pandas as pd
 import shapefile
 import geojson
 import json
@@ -23,7 +24,7 @@ from typing import List
 from graph import Node, Edge
 from constants import ObjectType, Property
 from PySide6.QtCore import QPointF, Qt, QSize
-from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy
+from PySide6.QtWidgets import QApplication, QColorDialog, QMainWindow, QGraphicsScene, QGraphicsView, QSizePolicy, QGraphicsTextItem
 from PySide6.QtGui import QBrush, QColor, QKeySequence, QPainterPath, QPen, QPolygon, QPolygonF, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
@@ -44,11 +45,14 @@ class VisGraphicsScene(QGraphicsScene):
         self.selectedOrigColor = None
 
         self.edgeColor = QColor(Qt.blue)
-        self.edgeColor.setAlphaF(0.4)
+        self.edgeColor.setAlphaF(0.3)
 
         self.nodePen = QPen(QColor(Qt.green))
 
         self.paths = {}
+        self.selected_airport_name_item: QGraphicsTextItem = QGraphicsTextItem("abc")
+        self.selected_airport_name_item.setPos(20, 20)
+        self.addItem(self.selected_airport_name_item)
 
     def addEdge(self, edge_id, path_item):
         self.paths[edge_id] = path_item
@@ -78,6 +82,8 @@ class VisGraphicsScene(QGraphicsScene):
                 item.setPen(self.selected)
                 self.colorConnectedEdges(item, self.selected)
                 self.selectedNode = item
+                print(item.data(Property.Node).name)
+                self.selected_airport_name_item.setPlainText(item.data(Property.Node).code)
             else:
                 return
 
@@ -125,7 +131,7 @@ class MainWindow(QMainWindow):
 
     RADIUS = 4
 
-    def __init__(self, airlines_file_path, map_shape_file_path, compatibility_measure_file_path, max_number):
+    def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path, compatibility_measure_file_path, max_number):
         super(MainWindow, self).__init__()
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createGraphicView()
@@ -140,7 +146,7 @@ class MainWindow(QMainWindow):
         self.loadTopology(map_shape_file_path)
         self.generateMap()
 
-        self.loadGraph(airlines_file_path)
+        self.loadGraph(airlines_file_path, airport_names_file_path)
         self.generateGraph()
 
         for edge in self.edges:
@@ -235,8 +241,10 @@ class MainWindow(QMainWindow):
                 processed_edges.append((edge[0], edge[1]))
         return degrees
 
-    def loadGraph(self, input_file_path):
+    def loadGraph(self, input_file_path, airports_file_path):
         graph = nx.read_graphml(input_file_path)
+        airports = pd.read_csv(airports_file_path)
+        print(airports[airports["IATA_CODE"] == "LIT"]["AIRPORT"])
         degrees = self.calculateDegree(graph)
 
         NUM = self.max_number 
@@ -248,10 +256,22 @@ class MainWindow(QMainWindow):
         max_y = -float("inf")
         max_size = -float("inf")
         min_size = float("inf")
-        for node_id, node in graph.nodes(data=True):
+
+        for node_id, _node in graph.nodes(data=True):
             if int(node_id) >= NUM:
                 continue
-            node = Node(id=int(node_id), size=degrees[int(node_id)], x=float(node["x"]) - self.RADIUS/2, y=float(node["y"]) - self.RADIUS/2)
+
+            airport_code = _node["tooltip"][:3]
+            """
+            if (airports["IATA_CODE"] == airport_code).sum() == 0:
+                print("Missing", airport_code)
+            airport_name = airports.loc[airports["IATA_CODE"] == airport_code].reset_index()["AIRPORT"][0]
+            """
+
+            node = Node(id=int(node_id), size=degrees[int(node_id)],
+                        code=airport_code, name=None,
+                        x=float(_node["x"]) - self.RADIUS/2, y=float(_node["y"]) - self.RADIUS/2)
+
             min_x = min(min_x, node.x)
             min_y = min(min_y, node.y)
             max_x = max(max_x, node.x)
@@ -323,6 +343,7 @@ class MainWindow(QMainWindow):
             nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, self.brush[0])
             nodeItem.setData(Property.ObjectType, ObjectType.Node)
             nodeItem.setData(Property.Node, node)
+            nodeItem.setToolTip(node.code)
 
     """
     def randomPathChange(self, times=1, change=1):
@@ -381,12 +402,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines-projected.graphml")
     parser.add_argument("--map", "-m", type=str, required=False, default="data/us-states.json")
+    parser.add_argument("--airport-names", "-a", type=str, required=False, default="data/airports.csv")
     parser.add_argument("--compatibility", "-c", type=str, required=False, default="data/compatibility-measures.npy")
     parser.add_argument("--number", "-n", type=int, required=False, default=300)
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
-    ex = MainWindow(args.graph, args.map, args.compatibility, args.number)
+    ex = MainWindow(args.graph, args.map, args.airport_names, args.compatibility, args.number)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

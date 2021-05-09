@@ -30,9 +30,11 @@ class Position():
 
 
 class Node(Position):
-    def __init__(self, id: int, size: int, x: float, y: float):
+    def __init__(self, id: int, code: str, name: str, size: int, x: float, y: float):
         super().__init__(x, y)
         self.id = id
+        self.code = code
+        self.name = name
         self.size = size
         self.connected_edges: Set[Edge] = set()
 
