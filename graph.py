@@ -86,6 +86,7 @@ class Edge():
 
         current_point = next_neighbour
         while current_point != self.target:
+            current_point.previous_neighbour = subdivision_point
             direction = compute_direction_vector(current_point, current_point.next_neighbour)
             subdivision_point = SubdivisionPoint(
                 x=current_point.x + direction[0]/2, y=current_point.y + direction[1]/2,

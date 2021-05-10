@@ -17,9 +17,9 @@ class FDEB():
 
         self.compatibility = np.where(np.isnan(self.compatibility), 0, self.compatibility)
 
-        self.step_size = 8 
-        self.K = 0.1
-        self.k = self.K
+        self.step_size = 8
+        self.K = 0.3
+        self.k = self.K / 2
 
     def calculate_forces(self):
         subdivision_points_count = len(self.edges[0].subdivision_points)
@@ -93,8 +93,7 @@ class FDEB():
                     neighbour_dir = np.array(sub_point.get_direction_to(neighbour))
                     neighbour_dist = sub_point.distance_from(neighbour)
                     if neighbour_dist > 0:
-                        # forces[idx_a, i, :] += self.k * neighbour_dir * neighbour_dist
-                        pass
+                        forces[idx_a, i, :] += self.k * neighbour_dir * neighbour_dist
             
             spring_end = time.time()
 
@@ -200,21 +199,18 @@ class FDEB():
                 edge.subdivision_points[sub_idx].x += self.step_size * forces[edge_idx, sub_idx, 0]
                 edge.subdivision_points[sub_idx].y += self.step_size * forces[edge_idx, sub_idx, 1]
 
-    def iteration_step(self, step):
-        """
-        if step % 20 == 0:
-            for edge in self.edges:
-                edge.add_subdivisions()
-        """
+    def iteration_step(self, step, verbose=False):
 
         start = time.time()
         forces = self.calculate_forces()
         end = time.time()
 
-        print("Computing forces took {} s".format(end - start))
+        if verbose:
+            print("Computing forces took {} s".format(end - start))
 
         start = time.time()
         self.apply_forces(forces)
         end = time.time()
 
-        print("Applying forces took {} s".format(end - start))
+        if verbose:
+            print("Applying forces took {} s".format(end - start))

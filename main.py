@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
             for edge in self.edges:
                 edge.add_subdivisions()
 
-            self.fdeb.k = self.fdeb.K / len(self.edges[0].subdivision_points)
+            self.fdeb.k = self.fdeb.K / (len(self.edges[0].subdivision_points) + 1)
 
             print("Added subdivisions, new count:", len(self.edges[0].subdivision_points))
             print("Step size:", self.fdeb.step_size, ", k=", self.fdeb.k)
@@ -210,6 +210,7 @@ class MainWindow(QMainWindow):
         print("step:", self.step)
         print("PathItems count:", len(self.pathItems))
         print("Edges count:", len(self.edges))
+        print("k={}".format(self.fdeb.k), ", {} subdivision points".format(len(self.edges[0].subdivision_points)))
         return super().keyPressEvent(event)
 
     def selectionChangedHandler(self, node: Node):
