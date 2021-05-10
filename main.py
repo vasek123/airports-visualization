@@ -304,14 +304,14 @@ class MainWindow(QMainWindow):
                 continue
 
             airport_code = _node["tooltip"][:3]
-            """
-            if (airports["IATA_CODE"] == airport_code).sum() == 0:
+
+            if (airports["iata_code"] == airport_code).sum() == 0:
                 print("Missing", airport_code)
-            airport_name = airports.loc[airports["IATA_CODE"] == airport_code].reset_index()["AIRPORT"][0]
-            """
+            airport_name = str(airports.loc[airports['iata_code'] == "LAX"]['name'].values[0])
+
 
             node = Node(id=int(node_id), size=degrees[int(node_id)],
-                        code=airport_code, name=None,
+                        code=airport_code, name=airport_name,
                         x=float(_node["x"]) - self.RADIUS/2, y=float(_node["y"]) - self.RADIUS/2)
 
             min_x = min(min_x, node.x)
@@ -445,7 +445,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph", "-g", type=str, required=False, default="data/airlines-projected.graphml")
     parser.add_argument("--map", "-m", type=str, required=False, default="data/us-states.json")
-    parser.add_argument("--airport-names", "-a", type=str, required=False, default="data/airports.csv")
+    parser.add_argument("--airport-names", "-a", type=str, required=False, default="data/airports-large-edited.csv")
     parser.add_argument("--compatibility", "-c", type=str, required=False, default="data/compatibility-measures.npy")
     parser.add_argument("--number", "-n", type=int, required=False, default=300)
     args = parser.parse_args()
