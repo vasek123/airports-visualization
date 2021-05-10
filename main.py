@@ -202,6 +202,8 @@ class MainWindow(QMainWindow):
             print("Added subdivisions, new count:", len(self.edges[0].subdivision_points))
             print("Step size:", self.fdeb.step_size, ", k=", self.fdeb.k)
 
+            self.checkNeighbourCorrectness()
+
             return super().keyPressEvent(event)
 
         self.fdeb.iteration_step(self.step)
@@ -217,7 +219,7 @@ class MainWindow(QMainWindow):
         if node is None:
             self.selected_airport_label.setText(NO_AIRPORT_SELECTED_LABEL)
         else:
-            self.selected_airport_label.setText("{}, size: {}".format(node.code, node.size))
+            self.selected_airport_label.setText("({}) {}, size: {}".format(node.code, node.name, node.size))
 
     def sliderChangeHandler(self, slider_value: float):
         self.slider_label.setText("{:.2f}".format(slider_value))
@@ -233,6 +235,20 @@ class MainWindow(QMainWindow):
         end = time.time()
 
         print("Updating edges took {}s".format(end - start))
+
+    def checkNeighbourCorrectness(self):
+        mistakes_count = 0
+        for edge in self.edges:
+            current_point = edge.first_subdivision_point
+            if current_point.previous_neighbour != edge.source:
+                mistakes_count += 1
+            while current_point.next_neighbour != edge.target:
+                if current_point.next_neighbour.previous_neighbour != current_point: 
+                    mistakes_count += 1
+                current_point = current_point.next_neighbour
+
+        print("Number of incorrectly linked points:", mistakes_count)
+
 
     def createEdgesPath(self):
         if not self.edges:
@@ -307,7 +323,7 @@ class MainWindow(QMainWindow):
 
             if (airports["iata_code"] == airport_code).sum() == 0:
                 print("Missing", airport_code)
-            airport_name = str(airports.loc[airports['iata_code'] == "LAX"]['name'].values[0])
+            airport_name = str(airports.loc[airports['iata_code'] == airport_code]['name'].values[0])
 
 
             node = Node(id=int(node_id), size=degrees[int(node_id)],

@@ -17,8 +17,8 @@ class FDEB():
 
         self.compatibility = np.where(np.isnan(self.compatibility), 0, self.compatibility)
 
-        self.step_size = 8
-        self.K = 0.3
+        self.step_size = 4
+        self.K = 1
         self.k = self.K / 2
 
     def calculate_forces(self):

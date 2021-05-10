@@ -71,13 +71,13 @@ class Edge():
             direction = compute_direction_vector(self.source, self.target)
             next_neighbour = self.target
 
-            print(direction)
+            # print(direction)
 
         subdivision_point = SubdivisionPoint(
             x=self.source.x + direction[0]/2, y=self.source.y + direction[1]/2,
             previous_neighbour=self.source, next_neighbour=next_neighbour
         )
-        print("blazne")
+        # print("blazne")
         """
         subdivision_point.x += np.random.uniform(10)
         subdivision_point.y += np.random.uniform(10)
