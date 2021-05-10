@@ -19,9 +19,9 @@ import geojson
 from typing import List
 from graph import Node, Edge
 from fdeb import FDEB
-from constants import ObjectType, Property, NODES_Z_VALUE
+from constants import ObjectType, Property, NODES_Z_VALUE, NO_AIRPORT_SELECTED_LABEL
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtWidgets import QApplication, QBoxLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
+from PySide6.QtWidgets import QApplication, QBoxLayout, QGridLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
 from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
@@ -133,7 +133,7 @@ class VisGraphicsView(QGraphicsView):
 
 class MainWindow(QMainWindow):
 
-    RADIUS = 6 
+    RADIUS = 8 
 
     def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path, compatibility_measure_file_path, max_number):
         super(MainWindow, self).__init__()
@@ -180,7 +180,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(48)
         self.toolbar.setLayout(layout)
 
-        self.selected_airport_label = QLabel("abc")
+        self.selected_airport_label = QLabel(NO_AIRPORT_SELECTED_LABEL)
         self.toolbar.addWidget(self.selected_airport_label)
 
         self.slider = QSlider(orientation=Qt.Orientation.Horizontal)
@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
 
     def selectionChangedHandler(self, node: Node):
         if node is None:
-            self.selected_airport_label.setText("No airport is selected")
+            self.selected_airport_label.setText(NO_AIRPORT_SELECTED_LABEL)
         else:
             self.selected_airport_label.setText("{}, size: {}".format(node.code, node.size))
 
@@ -253,8 +253,11 @@ class MainWindow(QMainWindow):
             self.scene.addEdge(edge.id, pathItem)
 
     def generateNodeColor(self):
+        # TODO: Instead of using the concrete degree value of the node,
+        # map it's color based on the ordered position of its degree value
         maxSize = max(node.size for node in self.nodes)
         minSize = min(node.size for node in self.nodes)
+        print("Resolution:", maxSize - minSize)
         assignedColors = {}
         for node in self.nodes:
             x = 1/(maxSize - minSize)
@@ -274,6 +277,10 @@ class MainWindow(QMainWindow):
                 degrees[int(edge[0])] += 1
                 degrees[int(edge[1])] += 1
                 processed_edges.append((edge[0], edge[1]))
+        
+        unique_degrees = set(degrees)
+        print("Unique degrees count:", len(unique_degrees))
+        print(unique_degrees)
         return degrees
 
     def loadGraph(self, input_file_path, airports_file_path):
