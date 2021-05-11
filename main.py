@@ -19,7 +19,7 @@ import geojson
 from typing import List
 from graph import Node, Edge
 from fdeb import FDEB
-from constants import ObjectType, Property, NODES_Z_VALUE, NO_AIRPORT_SELECTED_LABEL
+from constants import ObjectType, Property, NODES_Z_VALUE, NO_AIRPORT_SELECTED_LABEL, COLORS, GOOGLE_COLORS
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import QApplication, QBoxLayout, QGridLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
 from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
@@ -33,6 +33,7 @@ class VisGraphicsScene(QGraphicsScene):
         self.selectedNode = None
         self.wasDragg = False
         self.selection_change_handler = selection_change_handler
+        self.setBackgroundBrush(QBrush(GOOGLE_COLORS["lightBlue"]))
         colorGreen = QColor(Qt.green)
         # colorGreen.setAlphaF(0.5)
         colorRed = QColor(Qt.red)
@@ -45,16 +46,13 @@ class VisGraphicsScene(QGraphicsScene):
         self.selected.setWidthF(1)
         self.selectedOrigColor = None
 
-        self.edgeColor = QColor(Qt.blue)
-        self.edgeColor.setAlphaF(0.3)
+        self.edgeColor = COLORS["blue"]
+        self.edgeColor.setAlphaF(0.5)
 
         self.nodePen = QPen(QColor(Qt.green))
         self.nodePen.setWidthF(0.25)
 
         self.paths = {}
-        self.selected_airport_name_item: QGraphicsTextItem = QGraphicsTextItem("abc")
-        self.selected_airport_name_item.setPos(20, 20)
-        # self.addItem(self.selected_airport_name_item)
 
     def addEdge(self, edge_id, path_item):
         self.paths[edge_id] = path_item
@@ -86,7 +84,6 @@ class VisGraphicsScene(QGraphicsScene):
                 item.setPen(self.selected)
                 self.colorConnectedEdges(item, self.selected, 1)
                 self.selectedNode = item
-                self.selected_airport_name_item.setPlainText(item.data(Property.Node).code)
                 self.selection_change_handler(item.data(Property.Node))
             else:
                 return
@@ -193,7 +190,7 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_X:
-            self.fdeb.step_size /= 2
+            # self.fdeb.step_size /= 2
             for edge in self.edges:
                 edge.add_subdivisions()
 
@@ -254,8 +251,7 @@ class MainWindow(QMainWindow):
         if not self.edges:
             return
         
-        color = QColor(Qt.blue)
-        color.setAlphaF(0.4)
+        color = self.scene.edgeColor
         pen = QPen(color)
 
         for edge in self.edges:
@@ -274,7 +270,6 @@ class MainWindow(QMainWindow):
         # map it's color based on the ordered position of its degree value
         maxSize = max(node.size for node in self.nodes)
         minSize = min(node.size for node in self.nodes)
-        print("Resolution:", maxSize - minSize)
         assignedColors = {}
         for node in self.nodes:
             x = 1/(maxSize - minSize)
@@ -328,7 +323,7 @@ class MainWindow(QMainWindow):
 
             node = Node(id=int(node_id), size=degrees[int(node_id)],
                         code=airport_code, name=airport_name,
-                        x=float(_node["x"]) - self.RADIUS/2, y=float(_node["y"]) - self.RADIUS/2)
+                        x=float(_node["x"]), y=float(_node["y"]))
 
             min_x = min(min_x, node.x)
             min_y = min(min_y, node.y)
@@ -372,6 +367,9 @@ class MainWindow(QMainWindow):
         # mapBrush = QBrush(QColor("#FFF2AF"))
         IGNORED_STATES = ["Alaska", "Hawaii"]
 
+        stateBrush = QBrush(GOOGLE_COLORS["green"])
+        statePen = QPen(GOOGLE_COLORS["darkGreen"])
+
         def generatePolygon(geometry):
             polygon = QPolygonF()
             for point in geometry:
@@ -386,11 +384,11 @@ class MainWindow(QMainWindow):
             if feature["geometry"]["type"] == "Polygon":
                 geometry = feature["geometry"]["coordinates"][0]
                 polygon = generatePolygon(geometry)
-                item = self.scene.addPolygon(polygon, pen=self.scene.pen)
+                item = self.scene.addPolygon(polygon, pen=statePen, brush=stateBrush)
             elif feature["geometry"]["type"] == "MultiPolygon":
                 for geometry in feature["geometry"]["coordinates"]:
                     polygon = generatePolygon(geometry[0])
-                    item = self.scene.addPolygon(polygon, pen=self.scene.pen)
+                    item = self.scene.addPolygon(polygon, pen=statePen, brush=stateBrush)
 
             item.setData(Property.ObjectType, ObjectType.State)
         
@@ -404,21 +402,6 @@ class MainWindow(QMainWindow):
             nodeItem.setData(Property.Node, node)
             nodeItem.setZValue(NODES_Z_VALUE)
 
-    """
-    def randomPathChange(self, times=1, change=1):
-        for t in range(times):
-            for path, item in zip(self.paths, self.pathItems):
-                for idx in range(1, path.elementCount() - 1):
-                    change_x = np.random.uniform(-change, change)
-                    change_y = np.random.uniform(-change, change)
-
-                    # print(path.elementAt(idx).x, path.elementAt(idx).y, end=" ")
-                    path.setElementPositionAt(
-                        idx, path.elementAt(idx).x + change_x, path.elementAt(idx).y + change_y)
-                    # print(path.elementAt(idx).x, path.elementAt(idx).y)
-
-                item.setPath(path)
-    """
 
     def generateEdgePath(self, edge):
         path = QPainterPath(QPointF(edge.source.x + self.RADIUS/2, edge.source.y + self.RADIUS/2))

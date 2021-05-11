@@ -4,7 +4,7 @@ from graph import Node, Edge
 from typing import List
 
 class FDEB():
-    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=8, K=0.2, compatibility_measures_file_path=None):
+    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=1, K=0, compatibility_measures_file_path=None):
         self.nodes = nodes
         self.edges = edges
         self.compatibility_threshold = 0.05
@@ -103,6 +103,8 @@ class FDEB():
         # print("Computing electrostatic forces took {}s".format(electro_duration))
         # print("Computing spring forces took {}s".format(spring_duration))
         # print("Generating subdivision points matrices took {}s".format(subdivision_duration))
+
+
 
         return forces
 
@@ -206,7 +208,7 @@ class FDEB():
 
         self.k = self.K / (len(self.edges[0].subdivision_points) + 1)
 
-    def iteration_step(self, step, verbose=False):
+    def iteration_step(self, verbose=False):
 
         start = time.time()
         forces = self.calculate_forces()
