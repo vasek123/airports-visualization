@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
         for edge in self.edges:
             edge.add_subdivisions()
 
-        self.fdeb = FDEB(self.nodes, self.edges, compatibility_measure_file_path)
+        self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
 
         self.show()
 

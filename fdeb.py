@@ -4,21 +4,21 @@ from graph import Node, Edge
 from typing import List
 
 class FDEB():
-    def __init__(self, nodes: List[Node], edges: List[Edge], compatibility_measures_input_file_path=None):
+    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=8, K=0.2, compatibility_measures_file_path=None):
         self.nodes = nodes
         self.edges = edges
         self.compatibility_threshold = 0.05
 
-        if compatibility_measures_input_file_path is not None:
-            self.compatibility = np.load(compatibility_measures_input_file_path)
+        if compatibility_measures_file_path is not None:
+            self.compatibility = np.load(compatibility_measures_file_path)
         else:
             self.compatibility = self.compute_compatibilities()
             # np.save("./data/compatibility_measures.npy", self.compatibility)
 
         self.compatibility = np.where(np.isnan(self.compatibility), 0, self.compatibility)
 
-        self.step_size = 4
-        self.K = 1
+        self.step_size = step_size
+        self.K = K
         self.k = self.K / 2
 
     def calculate_forces(self):
@@ -61,7 +61,8 @@ class FDEB():
 
 
                 compatibility = self.compatibility[edge_a.id, edge_b.id]
-                forces_applied = unit_directions * distance_mask[:, None] * compatibility / np.power(distances[:, None], 2)
+                # forces_applied = unit_directions * distance_mask[:, None] * compatibility / np.power(distances[:, None], 2)
+                forces_applied = unit_directions * distance_mask[:, None] * compatibility / distances[:, None]
 
                 forces[idx_a, :, :] += forces_applied
                 forces[idx_b, :, :] -= forces_applied
@@ -198,6 +199,12 @@ class FDEB():
             for sub_idx in range(subdivision_points_count):
                 edge.subdivision_points[sub_idx].x += self.step_size * forces[edge_idx, sub_idx, 0]
                 edge.subdivision_points[sub_idx].y += self.step_size * forces[edge_idx, sub_idx, 1]
+
+    def add_subdivision_points(self):
+        for edge in self.edges:
+            edge.add_subdivisions()
+
+        self.k = self.K / (len(self.edges[0].subdivision_points) + 1)
 
     def iteration_step(self, step, verbose=False):
 
