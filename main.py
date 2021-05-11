@@ -9,20 +9,22 @@
 # OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING 
 # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from fdeb_interpolation import FDEBInterpolation
 import sys, random, math
 import time
 import argparse
 import networkx as nx
 import numpy as np
+from numpy.lib.function_base import gradient
 import pandas as pd
 import geojson
 from typing import List
 from graph import Node, Edge
 from fdeb import FDEB
 from constants import ObjectType, Property, NODES_Z_VALUE, NO_AIRPORT_SELECTED_LABEL, COLORS, GOOGLE_COLORS
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtWidgets import QApplication, QBoxLayout, QGridLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
-from PySide6.QtGui import QBrush, QColor, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
+from PySide6.QtCore import QPointF, QRect, Qt
+from PySide6.QtWidgets import QApplication, QBoxLayout, QGraphicsRectItem, QGridLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
@@ -47,9 +49,9 @@ class VisGraphicsScene(QGraphicsScene):
         self.selectedOrigColor = None
 
         self.edgeColor = COLORS["blue"]
-        self.edgeColor.setAlphaF(0.5)
+        self.edgeColor.setAlphaF(0.3)
 
-        self.nodePen = QPen(QColor(Qt.green))
+        self.nodePen = QPen(GOOGLE_COLORS["darkGreen"])
         self.nodePen.setWidthF(0.25)
 
         self.paths = {}
@@ -153,8 +155,14 @@ class MainWindow(QMainWindow):
 
         for edge in self.edges:
             edge.add_subdivisions()
+            edge.add_subdivisions()
+            edge.add_subdivisions()
+            edge.add_subdivisions()
+            edge.add_subdivisions()
 
-        self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
+        # self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
+        self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_k.npy", "./precomputed/positions.npy", self.edges)
+        # self.fdeb_interpolation.update_positions(0.04)
 
         self.show()
 
@@ -177,16 +185,31 @@ class MainWindow(QMainWindow):
         layout.setSpacing(48)
         self.toolbar.setLayout(layout)
 
-        self.selected_airport_label = QLabel(NO_AIRPORT_SELECTED_LABEL)
-        self.toolbar.addWidget(self.selected_airport_label)
+        gradient = self.createGradientColor()
+        print(gradient.finalStop())
+        gradientColorBar = QGraphicsRectItem(0, 0, 4000, 4000)
+        gradientColorBar.setBrush(QBrush(self.createGradientColor()))
+        # gradientColorBar.setBrush(QBrush(Qt.blue))
+        toolbarScene = QGraphicsScene()
+        toolbarView = QGraphicsView(toolbarScene, self.toolbar)
+        toolbarView.setGeometry(0, 0, 40, 10)
+        toolbarScene.addItem(gradientColorBar)
+        toolbarView.show()
+        self.toolbar.addWidget(toolbarView)
 
         self.slider = QSlider(orientation=Qt.Orientation.Horizontal)
         self.slider.setMaximumSize(400, 30)
+        self.slider.setMaximum(100)
         self.slider_label = QLabel("0")
         self.slider.valueChanged.connect(self.sliderChangeHandler)
         self.toolbar.addWidget(self.slider)
         self.toolbar.addWidget(self.slider_label)
 
+        self.toolbar.addSeparator()
+
+        self.selected_airport_label = QLabel(NO_AIRPORT_SELECTED_LABEL)
+        self.toolbar.addWidget(self.selected_airport_label)
+        
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_X:
@@ -219,7 +242,11 @@ class MainWindow(QMainWindow):
             self.selected_airport_label.setText("({}) {}, size: {}".format(node.code, node.name, node.size))
 
     def sliderChangeHandler(self, slider_value: float):
-        self.slider_label.setText("{:.2f}".format(slider_value))
+        print(slider_value)
+        self.slider_label.setText("{}".format(slider_value))
+        print(0.2 * slider_value / 100)
+        self.fdeb_interpolation.update_positions(0.2 * slider_value / 100)
+        self.updateEdgePaths()
 
     def updateEdgePaths(self):
         if not self.edges:
@@ -244,7 +271,8 @@ class MainWindow(QMainWindow):
                     mistakes_count += 1
                 current_point = current_point.next_neighbour
 
-        print("Number of incorrectly linked points:", mistakes_count)
+        if mistakes_count > 0:
+            print("Number of incorrectly linked points:", mistakes_count)
 
 
     def createEdgesPath(self):
@@ -268,18 +296,24 @@ class MainWindow(QMainWindow):
     def generateNodeColor(self):
         # TODO: Instead of using the concrete degree value of the node,
         # map it's color based on the ordered position of its degree value
-        maxSize = max(node.size for node in self.nodes)
-        minSize = min(node.size for node in self.nodes)
+        maxSize = max(np.log(node.size) for node in self.nodes)
+        minSize = min(np.log(node.size) for node in self.nodes)
         assignedColors = {}
         for node in self.nodes:
             x = 1/(maxSize - minSize)
-            l = 0.4 + 0.6 * x * (node.size-minSize)
-            h = ((node.size - minSize)/(maxSize-minSize))/6
+            l = 0.2 + 0.8 * x * np.log(node.size) - minSize
+            h = ((np.log(node.size) - minSize)/(maxSize-minSize))/4
             color = QColor()
-            color.setHslF(h,0.75, l, 1)
+            color.setHslF(h, 0.75, l, 1)
             assignedColors[node] = color
 
         return assignedColors
+
+    def createGradientColor(self):
+        gradient = QLinearGradient()
+        gradient.setColorAt(1, QColor.fromHslF(0, 0.75, 0, 1))
+        gradient.setColorAt(0, QColor.fromHslF(1/4, 0.75, 1, 1))
+        return gradient
     
     def calculateDegree(self, graph):
         degrees = [0] * len(graph.nodes())
@@ -397,7 +431,7 @@ class MainWindow(QMainWindow):
         self.createEdgesPath()
         assignedColors = self.generateNodeColor()
         for node in self.nodes:
-            nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.pen, assignedColors[node])
+            nodeItem = self.scene.addEllipse(node.x, node.y, self.RADIUS, self.RADIUS, self.scene.nodePen, assignedColors[node])
             nodeItem.setData(Property.ObjectType, ObjectType.Node)
             nodeItem.setData(Property.Node, node)
             nodeItem.setZValue(NODES_Z_VALUE)
