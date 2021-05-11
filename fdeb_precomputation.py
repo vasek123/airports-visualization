@@ -12,7 +12,6 @@ DEFAULT_SCHEMA = [
     { "cycle": 2, "step_size": 2, "iterations_num": 22 },
     { "cycle": 3, "step_size": 1, "iterations_num": 15 },
     { "cycle": 4, "step_size": 0.5, "iterations_num": 9 },
-    { "cycle": 5, "step_size": 0.25, "iterations_num": 7 }
 ]
 
 class FDEBPrecompute():
@@ -110,6 +109,7 @@ if __name__ == "__main__":
 
     # K_to_compute = np.linspace(start=0, stop=0.2, endpoint=True)
     K_to_compute=[0]
+    """
     schema = [
         { "cycle": 0, "step_size": 8, "iterations_num": 1 },
         { "cycle": 0, "step_size": 8, "iterations_num": 1 },
@@ -117,7 +117,8 @@ if __name__ == "__main__":
         { "cycle": 0, "step_size": 8, "iterations_num": 1 },
         { "cycle": 0, "step_size": 8, "iterations_num": 1 }
     ]
-    precompute = FDEBPrecompute(nodes, edges, K_to_compute, args.compatibility, schema=schema)
+    """
+    precompute = FDEBPrecompute(nodes, edges, K_to_compute, args.compatibility)
 
     precompute.precompute_positions()
     precompute.save_positions("./precomputed/positions")
