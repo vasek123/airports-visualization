@@ -16,17 +16,18 @@ class FDEBInterpolation():
         left_point = np.argmin(self.K_available <= K) - 1
         right_point = left_point + 1
 
-        print(self.K_available[left_point], K, self.K_available[right_point])
+        # print(self.K_available[left_point], K, self.K_available[right_point])
 
         if right_point >= len(self.K_available):
             right_point = None
 
         distance_between_points = self.K_available[right_point] - self.K_available[left_point]
-        alpha = (K - self.K_available[right_point]) / distance_between_points
+        alpha = (K - self.K_available[left_point]) / distance_between_points
 
-        new_positions = alpha * self.positions[left_point, :] + (1 - alpha) * self.positions[right_point, :]
-        print(self.K_available)
-        # new_positions = self.positions[5, :]
+        new_positions = (1 - alpha) * self.positions[left_point, :] + alpha * self.positions[right_point, :]
+        # print(self.K_available)
+        # new_positions = self.positions[-1, :]
+        # new_positions = (self.positions[left_point, :] + self.positions[right_point, :]) / 2
 
         subdivision_points_count = len(self.edges[0].subdivision_points)
         for edge_idx, edge in enumerate(self.edges):

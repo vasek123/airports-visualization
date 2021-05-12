@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     nodes, edges = loadGraph(args.graph)
 
-    K_to_compute = np.linspace(start=0, stop=0.3, num=10, endpoint=True)
+    K_to_compute = np.linspace(start=0, stop=0.4, num=10, endpoint=True)
     """
     K_to_compute=[0]
     schema = [

@@ -4,7 +4,7 @@ from graph import Node, Edge
 from typing import List
 
 class FDEB():
-    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=4, K=0.3, compatibility_measures_file_path=None):
+    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=4, K=0.2, compatibility_measures_file_path=None):
         self.nodes = nodes
         self.edges = edges
         self.compatibility_threshold = 0.3
