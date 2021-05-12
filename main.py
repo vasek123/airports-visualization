@@ -161,9 +161,12 @@ class MainWindow(QMainWindow):
             edge.add_subdivisions()
             edge.add_subdivisions()
 
-        self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
+
+        # self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
         self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_new_k.npy", "./precomputed/positions_new.npy", self.edges)
-        #self.fdeb_interpolation.update_positions(0.04)
+        self.fdeb_interpolation.update_positions(0)
+        self.updateEdgePaths()
+
 
         self.show()
 
@@ -219,6 +222,7 @@ class MainWindow(QMainWindow):
         
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
+        """
         if event.key() == Qt.Key_X:
             self.fdeb.step_size /= 2
             for edge in self.edges:
@@ -240,6 +244,7 @@ class MainWindow(QMainWindow):
         print("PathItems count:", len(self.pathItems))
         print("Edges count:", len(self.edges))
         print("k={}".format(self.fdeb.k), ", {} subdivision points".format(len(self.edges[0].subdivision_points)))
+        """
         return super().keyPressEvent(event)
 
     def selectionChangedHandler(self, node: Node):
@@ -252,7 +257,7 @@ class MainWindow(QMainWindow):
         print(slider_value)
         self.slider_label.setText("{}".format(slider_value))
         print(0.2 * slider_value / 100)
-        self.fdeb_interpolation.update_positions(0.2 * slider_value / 100)
+        self.fdeb_interpolation.update_positions(0.3 - 0.3 * slider_value / 100)
         self.updateEdgePaths()
 
     def updateEdgePaths(self):
@@ -490,6 +495,7 @@ def main():
     parser.add_argument("--airport-names", "-a", type=str, required=False, default="data/airports-large-edited.csv")
     parser.add_argument("--compatibility", "-c", type=str, required=False, default="data/compatibility-measures.npy")
     parser.add_argument("--number", "-n", type=int, required=False, default=300)
+    parser.add_argument("--interpolation", "-i", type=bool, required=False, default=True)
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
