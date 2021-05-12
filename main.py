@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
     def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path,
                  compatibility_measure_file_path, max_number, precomputed_positions_path):
         super(MainWindow, self).__init__()
-        self.setWindowTitle("Force-directed Edge Bundling - US Airlines")
+        self.setWindowTitle("Force-Directed Edge Bundling - US Flight Connections")
         self.createToolbar()
         self.createGraphicView()
         self.resize(1100,700)
