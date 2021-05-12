@@ -14,7 +14,7 @@ class FDEBInterpolation():
         # Return the index of the first element that is smaller or equal to the requested K
 
         left_point = np.argmin(self.K_available <= K) - 1
-        right_point = left_point + 1
+        right_point = left_point + 1 #   left_point.......PTR....right
 
         print(self.K_available[left_point], K, self.K_available[right_point])
 
@@ -22,9 +22,9 @@ class FDEBInterpolation():
             right_point = None
 
         distance_between_points = self.K_available[right_point] - self.K_available[left_point]
-        alpha = (K - self.K_available[right_point]) / distance_between_points
+        alpha = (K - self.K_available[left_point]) / distance_between_points
 
-        new_positions = alpha * self.positions[left_point, :] + (1 - alpha) * self.positions[right_point, :]
+        new_positions = (1 - alpha) * self.positions[left_point, :] + alpha * self.positions[right_point, :]
         print(self.K_available)
         # new_positions = self.positions[5, :]
 

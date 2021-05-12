@@ -24,7 +24,7 @@ from fdeb import FDEB
 from constants import ObjectType, Property, NODES_Z_VALUE, NO_AIRPORT_SELECTED_LABEL, COLORS, GOOGLE_COLORS
 from PySide6.QtCore import QPointF, QRect, Qt
 from PySide6.QtWidgets import QApplication, QBoxLayout, QGraphicsRectItem, QGridLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
-from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent, QPixmap
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
@@ -51,8 +51,8 @@ class VisGraphicsScene(QGraphicsScene):
         self.edgeColor = COLORS["blue"]
         self.edgeColor.setAlphaF(0.3)
 
-        self.nodePen = QPen(GOOGLE_COLORS["darkGreen"])
-        self.nodePen.setWidthF(0.25)
+        self.nodePen = QPen(COLORS["blue"])
+        self.nodePen.setWidthF(0.35)
 
         self.paths = {}
 
@@ -139,6 +139,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('VIZ Qt for Python Example')
         self.createToolbar()
         self.createGraphicView()
+        self.resize(1100,700)
 
         self.max_number = max_number
         self.nodes: List[Node] = []
@@ -155,15 +156,14 @@ class MainWindow(QMainWindow):
 
         for edge in self.edges:
             edge.add_subdivisions()
-            continue
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
 
         self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
-        # self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_k.npy", "./precomputed/positions.npy", self.edges)
-        # self.fdeb_interpolation.update_positions(0.04)
+        self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_new_k.npy", "./precomputed/positions_new.npy", self.edges)
+        #self.fdeb_interpolation.update_positions(0.04)
 
         self.show()
 
@@ -172,7 +172,8 @@ class MainWindow(QMainWindow):
         self.brush = [QBrush(Qt.yellow), QBrush(Qt.green), QBrush(Qt.blue)]
         self.view = VisGraphicsView(self.scene, self)
         self.setCentralWidget(self.view)
-        self.view.setGeometry(0, 0, 800, 600)
+        self.view.setGeometry(0, 0, 1000, 750)
+
 
         # self.scene.selectionChanged.connect(self.selectionChangedHandler)
 
@@ -186,6 +187,10 @@ class MainWindow(QMainWindow):
         layout.setSpacing(48)
         self.toolbar.setLayout(layout)
 
+        pixLabel = QLabel()
+        pix = QPixmap("data/geeks.png")
+        pixLabel.setPixmap(pix)
+
         gradient = self.createGradientColor()
         print(gradient.finalStop())
         gradientColorBar = QGraphicsRectItem(0, 0, 4000, 4000)
@@ -194,9 +199,10 @@ class MainWindow(QMainWindow):
         toolbarScene = QGraphicsScene()
         toolbarView = QGraphicsView(toolbarScene, self.toolbar)
         toolbarView.setGeometry(0, 0, 40, 10)
-        toolbarScene.addItem(gradientColorBar)
+        #toolbarScene.addItem(gradientColorBar)
+        self.toolbar.addWidget(pixLabel)
         toolbarView.show()
-        self.toolbar.addWidget(toolbarView)
+        #self.toolbar.addWidget(toolbarView)
 
         self.slider = QSlider(orientation=Qt.Orientation.Horizontal)
         self.slider.setMaximumSize(400, 30)
@@ -246,8 +252,8 @@ class MainWindow(QMainWindow):
         print(slider_value)
         self.slider_label.setText("{}".format(slider_value))
         print(0.2 * slider_value / 100)
-        # self.fdeb_interpolation.update_positions(0.2 * slider_value / 100)
-        # self.updateEdgePaths()
+        self.fdeb_interpolation.update_positions(0.2 * slider_value / 100)
+        self.updateEdgePaths()
 
     def updateEdgePaths(self):
         if not self.edges:
@@ -302,8 +308,10 @@ class MainWindow(QMainWindow):
         assignedColors = {}
         for node in self.nodes:
             x = 1/(maxSize - minSize)
-            l = 0.2 + 0.8 * x * np.log(node.size) - minSize
+            l = 0.3 + 0.7 * x * np.log(node.size) - minSize
             h = ((np.log(node.size) - minSize)/(maxSize-minSize))/4
+            #l = 0.5
+            #h = ((((np.log(node.size) - minSize) / (maxSize - minSize)) / 2) + 0.67) % 1
             color = QColor()
             color.setHslF(h, 0.75, l, 1)
             assignedColors[node] = color
