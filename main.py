@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
         self.max_number = max_number
         self.nodes: List[Node] = []
         self.edges: List[Edge] = []
-        self.step = 1
+        self.step = 0
 
         self.pathItems = []
 
@@ -155,13 +155,14 @@ class MainWindow(QMainWindow):
 
         for edge in self.edges:
             edge.add_subdivisions()
+            continue
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
             edge.add_subdivisions()
 
-        # self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
-        self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_k.npy", "./precomputed/positions.npy", self.edges)
+        self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
+        # self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_k.npy", "./precomputed/positions.npy", self.edges)
         # self.fdeb_interpolation.update_positions(0.04)
 
         self.show()
@@ -213,7 +214,7 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_X:
-            # self.fdeb.step_size /= 2
+            self.fdeb.step_size /= 2
             for edge in self.edges:
                 edge.add_subdivisions()
 
@@ -245,8 +246,8 @@ class MainWindow(QMainWindow):
         print(slider_value)
         self.slider_label.setText("{}".format(slider_value))
         print(0.2 * slider_value / 100)
-        self.fdeb_interpolation.update_positions(0.2 * slider_value / 100)
-        self.updateEdgePaths()
+        # self.fdeb_interpolation.update_positions(0.2 * slider_value / 100)
+        # self.updateEdgePaths()
 
     def updateEdgePaths(self):
         if not self.edges:

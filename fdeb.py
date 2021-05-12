@@ -4,10 +4,10 @@ from graph import Node, Edge
 from typing import List
 
 class FDEB():
-    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=1, K=0, compatibility_measures_file_path=None):
+    def __init__(self, nodes: List[Node], edges: List[Edge], step_size=4, K=0.3, compatibility_measures_file_path=None):
         self.nodes = nodes
         self.edges = edges
-        self.compatibility_threshold = 0.05
+        self.compatibility_threshold = 0.3
 
         if compatibility_measures_file_path is not None:
             self.compatibility = np.load(compatibility_measures_file_path)
@@ -28,6 +28,7 @@ class FDEB():
         electro_duration = 0
         spring_duration = 0
         subdivision_duration = 0
+        counter = 0
         for idx_a, edge_a in enumerate(self.edges):
 
             subdivision_start = time.time()
@@ -42,6 +43,7 @@ class FDEB():
                 if idx_a <= idx_b or self.compatibility[edge_a.id, edge_b.id] < self.compatibility_threshold:
                     continue
 
+                counter += 1
                 # Convert this inner part into numpy
                 subdivision_start = time.time()
                 edge_b_subdivisions = edge_b.get_subdivisions()
@@ -104,7 +106,7 @@ class FDEB():
         # print("Computing spring forces took {}s".format(spring_duration))
         # print("Generating subdivision points matrices took {}s".format(subdivision_duration))
 
-
+        # print("Compatible pairs:", counter)
 
         return forces
 
@@ -196,11 +198,22 @@ class FDEB():
 
 
     def apply_forces(self, forces):
+        # max_movement = None
+        # max_dist = -np.inf
         subdivision_points_count = len(self.edges[0].subdivision_points)
         for edge_idx, edge in enumerate(self.edges):
             for sub_idx in range(subdivision_points_count):
                 edge.subdivision_points[sub_idx].x += self.step_size * forces[edge_idx, sub_idx, 0]
                 edge.subdivision_points[sub_idx].y += self.step_size * forces[edge_idx, sub_idx, 1]
+
+                """
+                if np.linalg.norm(forces[edge_idx, sub_idx, :]) > max_dist:
+                    max_dist = np.linalg.norm(forces[edge_idx, sub_idx, :])
+                    max_movement = forces[edge_idx, sub_idx, :]
+                """
+
+        # print("Max:", max_dist * self.step_size, max_dist, max_movement)
+
 
     def add_subdivision_points(self):
         for edge in self.edges:

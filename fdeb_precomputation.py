@@ -7,11 +7,11 @@ from graph import Node, Edge
 from fdeb import FDEB
 
 DEFAULT_SCHEMA = [
-    { "cycle": 0, "step_size": 8, "iterations_num": 50 },
-    { "cycle": 1, "step_size": 4, "iterations_num": 33 },
-    { "cycle": 2, "step_size": 2, "iterations_num": 22 },
-    { "cycle": 3, "step_size": 1, "iterations_num": 15 },
-    { "cycle": 4, "step_size": 0.5, "iterations_num": 9 },
+    { "cycle": 0, "step_size": 4, "iterations_num": 50 },
+    { "cycle": 1, "step_size": 2, "iterations_num": 40 },
+    { "cycle": 2, "step_size": 1, "iterations_num": 40 },
+    { "cycle": 3, "step_size": 0.5, "iterations_num": 30 },
+    { "cycle": 4, "step_size": 0.25, "iterations_num": 15 },
 ]
 
 class FDEBPrecompute():
@@ -30,6 +30,7 @@ class FDEBPrecompute():
     def compute_for_K(self, K):
         fdeb = FDEB(self.nodes, copy.deepcopy(self.edges), K=K,
                     compatibility_measures_file_path=self.compatibility_measures_file_path)
+        fdeb.compatibility_threshold = 0.3
 
         counter = 0
 
@@ -45,12 +46,12 @@ class FDEBPrecompute():
             for i in range(cycle["iterations_num"]):
                 fdeb.iteration_step()
                 counter += 1
-                print("Completed iterations: {}".format(counter))
+                # print("Completed iterations: {}".format(counter))
 
 
             cycle_end = time.time()
 
-            print("Cycle duration: {}s".format(cycle_end - cycle_start))
+            print("[K={}] Cycle {} duration: {}s".format(K, cycle["cycle"], cycle_end - cycle_start))
 
 
         resulting_positions = np.zeros(shape=(len(self.edges), 31, 2))
@@ -61,7 +62,11 @@ class FDEBPrecompute():
 
     def precompute_positions(self):
         for idx_K, K in enumerate(self.K_to_compute):
+            print("Starting the computation for K={}".format(K))
+            k_start = time.time()
             self.positions[idx_K, :] = self.compute_for_K(K)
+            k_end = time.time()
+            print("K={} computation took {}s".format(K, k_end - k_start))
 
     def save_positions(self, file_path):
         np.save(file_path, self.positions)
@@ -107,9 +112,9 @@ if __name__ == "__main__":
 
     nodes, edges = loadGraph(args.graph)
 
-    K_to_compute = np.linspace(start=0, stop=0.2, num=10, endpoint=True)
-    # K_to_compute=[0]
+    K_to_compute = np.linspace(start=0, stop=0.3, num=10, endpoint=True)
     """
+    K_to_compute=[0]
     schema = [
         { "cycle": 0, "step_size": 8, "iterations_num": 1 },
         { "cycle": 0, "step_size": 8, "iterations_num": 1 },
@@ -121,7 +126,7 @@ if __name__ == "__main__":
     precompute = FDEBPrecompute(nodes, edges, K_to_compute, args.compatibility)
 
     precompute.precompute_positions()
-    precompute.save_positions("./precomputed/positions")
+    precompute.save_positions("./precomputed/positions_new")
 
 
 
