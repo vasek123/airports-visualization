@@ -24,7 +24,7 @@ from fdeb import FDEB
 from constants import ObjectType, Property, NODES_Z_VALUE, NO_AIRPORT_SELECTED_LABEL, COLORS, GOOGLE_COLORS
 from PySide6.QtCore import QPointF, QRect, Qt
 from PySide6.QtWidgets import QApplication, QBoxLayout, QGraphicsRectItem, QGridLayout, QHBoxLayout, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QPushButton, QSlider, QToolBar, QLabel
-from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent, QPixmap
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainterPath, QPen, QPolygonF, QTextItem, QTransform, QPainter, QKeyEvent, QGradient, QPixmap
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
@@ -82,7 +82,6 @@ class VisGraphicsScene(QGraphicsScene):
         if item:
 
             if item.data(Property.ObjectType) is ObjectType.Node:
-                # print("Selected node", item.data(Property.NodeId))
                 item.setPen(self.selected)
                 self.colorConnectedEdges(item, self.selected, 1)
                 self.selectedNode = item
@@ -90,11 +89,7 @@ class VisGraphicsScene(QGraphicsScene):
             else:
                 return
 
-            # Sets its outline to the "selected" color and store it in self.selection
-            # self.selectedOrigColor = item.pen()
-            # item.setPen(self.selected)
-            # self.selection = item
-
+            
 class VisGraphicsView(QGraphicsView):
     def __init__(self, scene: VisGraphicsScene, parent):
         super(VisGraphicsView, self).__init__(scene, parent)
@@ -134,9 +129,10 @@ class MainWindow(QMainWindow):
 
     RADIUS = 8 
 
-    def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path, compatibility_measure_file_path, max_number):
+    def __init__(self, airlines_file_path, map_shape_file_path, airport_names_file_path,
+                 compatibility_measure_file_path, max_number, precomputed_positions_path):
         super(MainWindow, self).__init__()
-        self.setWindowTitle('VIZ Qt for Python Example')
+        self.setWindowTitle("Force-directed Edge Bundling - US Airlines")
         self.createToolbar()
         self.createGraphicView()
         self.resize(1100,700)
@@ -163,8 +159,10 @@ class MainWindow(QMainWindow):
 
 
         # self.fdeb = FDEB(self.nodes, self.edges, compatibility_measures_file_path=compatibility_measure_file_path)
-        self.fdeb_interpolation = FDEBInterpolation("./precomputed/positions_new_k.npy", "./precomputed/positions_new.npy", self.edges)
-        self.fdeb_interpolation.update_positions(0)
+        max_precomputed_K = np.max(np.load("{}_k.npy".format(precomputed_positions_path)))
+        self.K_max = max_precomputed_K * 1.4
+        self.fdeb_interpolation = FDEBInterpolation(precomputed_positions_path, self.edges, K_max=self.K_max)
+        self.fdeb_interpolation.update_positions(self.K_max)
         self.updateEdgePaths()
 
 
@@ -177,8 +175,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.view)
         self.view.setGeometry(0, 0, 1000, 750)
 
-
-        # self.scene.selectionChanged.connect(self.selectionChangedHandler)
 
     def createToolbar(self):
         self.toolbar = QToolBar("Toolbar")
@@ -194,11 +190,8 @@ class MainWindow(QMainWindow):
         pix = QPixmap("data/geeks.png")
         pixLabel.setPixmap(pix)
 
-        gradient = self.createGradientColor()
-        print(gradient.finalStop())
         gradientColorBar = QGraphicsRectItem(0, 0, 4000, 4000)
         gradientColorBar.setBrush(QBrush(self.createGradientColor()))
-        # gradientColorBar.setBrush(QBrush(Qt.blue))
         toolbarScene = QGraphicsScene()
         toolbarView = QGraphicsView(toolbarScene, self.toolbar)
         toolbarView.setGeometry(0, 0, 40, 10)
@@ -254,10 +247,8 @@ class MainWindow(QMainWindow):
             self.selected_airport_label.setText("({}) {}, size: {}".format(node.code, node.name, node.size))
 
     def sliderChangeHandler(self, slider_value: float):
-        print(slider_value)
         self.slider_label.setText("{}".format(slider_value))
-        print(0.2 * slider_value / 100)
-        self.fdeb_interpolation.update_positions(0.3 - 0.3 * slider_value / 100)
+        self.fdeb_interpolation.update_positions(self.K_max - self.K_max * slider_value / 100)
         self.updateEdgePaths()
 
     def updateEdgePaths(self):
@@ -270,7 +261,7 @@ class MainWindow(QMainWindow):
             self.pathItems[idx].setPath(path)
         end = time.time()
 
-        print("Updating edges took {}s".format(end - start))
+        # print("Updating edges took {}s".format(end - start))
 
     def checkNeighbourCorrectness(self):
         mistakes_count = 0
@@ -325,8 +316,9 @@ class MainWindow(QMainWindow):
 
     def createGradientColor(self):
         gradient = QLinearGradient()
-        gradient.setColorAt(1, QColor.fromHslF(0, 0.75, 0, 1))
-        gradient.setColorAt(0, QColor.fromHslF(1/4, 0.75, 1, 1))
+        gradient.setColorAt(0.0, QColor.fromHslF(0, 0.75, 0, 1))
+        gradient.setColorAt(1.0, QColor.fromHslF(1/4, 0.75, 1, 1))
+        gradient.setCoordinateMode(QGradient.ObjectMode)
         return gradient
     
     def calculateDegree(self, graph):
@@ -338,9 +330,6 @@ class MainWindow(QMainWindow):
                 degrees[int(edge[1])] += 1
                 processed_edges.append((edge[0], edge[1]))
         
-        unique_degrees = set(degrees)
-        print("Unique degrees count:", len(unique_degrees))
-        print(unique_degrees)
         return degrees
 
     def loadGraph(self, input_file_path, airports_file_path):
@@ -383,10 +372,6 @@ class MainWindow(QMainWindow):
 
             self.nodes[int(node_id)] = node
 
-        print(min_x, min_y)
-        print(max_x, max_y)
-        print(min_size, max_size)
-
         added = []
         for source, target, attr in graph.edges(data=True):
             # Use only edges that are connected the some of the first NUM aiports
@@ -403,7 +388,7 @@ class MainWindow(QMainWindow):
                 self.nodes[edge.source.id].connected_edges.add(edge.id)
                 self.nodes[edge.target.id].connected_edges.add(edge.id)
 
-        print("Total number of edges:", len(added))
+        # print("Total number of edges:", len(added))
 
     def loadTopology(self, input_file_path):
         with open(input_file_path, "r") as f:
@@ -494,12 +479,13 @@ def main():
     parser.add_argument("--map", "-m", type=str, required=False, default="data/us-states.json")
     parser.add_argument("--airport-names", "-a", type=str, required=False, default="data/airports-large-edited.csv")
     parser.add_argument("--compatibility", "-c", type=str, required=False, default="data/compatibility-measures.npy")
+    parser.add_argument("--precomputed", "-p", type=str, required=False, default="precomputed/positions_new")
     parser.add_argument("--number", "-n", type=int, required=False, default=300)
     parser.add_argument("--interpolation", "-i", type=bool, required=False, default=True)
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
-    ex = MainWindow(args.graph, args.map, args.airport_names, args.compatibility, args.number)
+    ex = MainWindow(args.graph, args.map, args.airport_names, args.compatibility, args.number, args.precomputed)
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
